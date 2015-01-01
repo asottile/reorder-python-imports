@@ -21,7 +21,7 @@ setup(
     packages=find_packages('.', exclude=('tests*', 'testing*')),
     install_requires=[
         'argparse',
-        'aspy.refactor_imports>=0.2.1',
+        'aspy.refactor_imports>=0.2.3',
         'cached-property',
         'six',
     ],
