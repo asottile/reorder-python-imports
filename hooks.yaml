@@ -1,0 +1,6 @@
+-   id: reorder-python-imports
+    name: Reorder python imports
+    description: This hook reorders imports in python files.
+    entry: reorder-python-imports
+    language: python
+    files: '\.py$'
