@@ -6,7 +6,6 @@ import argparse
 import ast
 import collections
 import io
-import re
 import tokenize
 
 import six
@@ -14,13 +13,8 @@ from aspy.refactor_imports.import_obj import import_obj_from_str
 from aspy.refactor_imports.sort import sort
 
 
-ENCODING_RE = re.compile(r"^\s*#.*coding[:=]\s*([-\w.]+)")
-
-
 class CodeType(object):
-    SHEBANG = 'shebang'
-    ENCODING = 'encoding'
-    DOCSTRING = 'docstring'
+    PRE_IMPORT_CODE = 'pre_import_code'
     IMPORT = 'import'
     NON_CODE = 'non_code'
     CODE = 'code'
@@ -59,7 +53,7 @@ def partition_source(src):
     """Partitions source into a list of `CodePartition`s for import
     refactoring.
     """
-    # pylint:disable=too-many-branches,too-many-locals
+    # pylint:disable=too-many-locals
     if type(src) is not six.text_type:
         raise TypeError('Expected text but got `{0}`'.format(type(src)))
 
@@ -78,49 +72,31 @@ def partition_source(src):
     startpos = 0
     pending_chunk_type = None
     possible_ending_tokens = None
-    seen_docstring = False
+    seen_import = False
     for (
-            token_type, token_s, (srow, scol), (erow, ecol), _,
+            token_type, _, (srow, scol), (erow, ecol), _,
     ) in tokenize.generate_tokens(io.StringIO(src).readline):
         # Searching for a start of a chunk
         if pending_chunk_type is None:
-            if (
-                    token_type == tokenize.COMMENT and
-                    srow == 1 and
-                    token_s.startswith('#!')
-            ):
-                pending_chunk_type = CodeType.SHEBANG
+            if not seen_import and token_type == tokenize.COMMENT:
+                pending_chunk_type = CodeType.PRE_IMPORT_CODE
                 possible_ending_tokens = TERMINATES_COMMENT
-            elif (
-                    token_type == tokenize.COMMENT and
-                    srow in (1, 2) and
-                    ENCODING_RE.match(token_s)
-            ):
-                pending_chunk_type = CodeType.ENCODING
-                possible_ending_tokens = TERMINATES_COMMENT
+            elif not seen_import and token_type == tokenize.STRING:
+                pending_chunk_type = CodeType.PRE_IMPORT_CODE
+                possible_ending_tokens = TERMINATES_DOCSTRING
             elif scol == 0 and srow in visitor.top_level_import_line_numbers:
+                seen_import = True
                 pending_chunk_type = CodeType.IMPORT
                 possible_ending_tokens = TERMINATES_IMPORT
-            elif scol == 0 and token_type == tokenize.STRING:
-                # We only want to treat the first "docstring"like as a
-                # docstring.
-                # Admittedly, this is a super-edge case and someone is
-                # probably doingitwrong if there's two toplevel docstrings
-                if seen_docstring:
-                    pending_chunk_type = CodeType.NON_CODE
-                else:
-                    seen_docstring = True
-                    pending_chunk_type = CodeType.DOCSTRING
-                possible_ending_tokens = TERMINATES_DOCSTRING
             elif token_type == tokenize.NL:
                 # A NL token is a non-important newline, we'll immediately
-                # append a MOVABLE_CODE partition
+                # append a NON_CODE partition
                 endpos = line_offsets[erow] + ecol
                 srctext = src[startpos:endpos]
                 startpos = endpos
                 chunks.append(CodePartition(CodeType.NON_CODE, srctext))
             elif token_type == tokenize.COMMENT:
-                pending_chunk_type = CodeType.NON_CODE
+                pending_chunk_type = CodeType.CODE
                 possible_ending_tokens = TERMINATES_COMMENT
             elif token_type == tokenize.ENDMARKER:
                 # Token ended right before end of file or file was empty
@@ -176,18 +152,15 @@ def remove_duplicated_imports(partitions):
 
 
 def apply_import_sorting(partitions):
-    shebang = []
-    encoding = []
-    docstring = []
+    pre_import_code = []
     imports = []
+    trash = []
     rest = []
     for partition in partitions:
         {
-            CodeType.SHEBANG: shebang,
-            CodeType.ENCODING: encoding,
-            CodeType.DOCSTRING: docstring,
+            CodeType.PRE_IMPORT_CODE: pre_import_code,
             CodeType.IMPORT: imports,
-            CodeType.NON_CODE: rest,
+            CodeType.NON_CODE: trash,
             CodeType.CODE: rest,
         }[partition.code_type].append(partition)
 
@@ -220,7 +193,7 @@ def apply_import_sorting(partitions):
     else:
         rest = []
 
-    return shebang + encoding + docstring + new_imports + rest
+    return pre_import_code + new_imports + rest
 
 
 STEPS = (

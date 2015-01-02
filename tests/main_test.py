@@ -31,31 +31,34 @@ def test_partition_source_errors_with_bytes():
 
 def test_partition_source_shebang():
     assert partition_source('#!/usr/bin/env python\n') == [
-        CodePartition(CodeType.SHEBANG, '#!/usr/bin/env python\n'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, '#!/usr/bin/env python\n'),
     ]
 
 
 def test_partiiton_source_shebang_no_nl():
     assert partition_source('#!/usr/bin/env python') == [
-        CodePartition(CodeType.SHEBANG, '#!/usr/bin/env python'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, '#!/usr/bin/env python'),
     ]
 
 
 def test_partition_source_encoding():
     assert partition_source('# -*- coding: UTF-8 -*-\n') == [
-        CodePartition(CodeType.ENCODING, '# -*- coding: UTF-8 -*-\n'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, '# -*- coding: UTF-8 -*-\n'),
     ]
 
 
 def test_partition_source_encoding_no_nl():
     assert partition_source('# -*- coding: UTF-8 -*-') == [
-        CodePartition(CodeType.ENCODING, '# -*- coding: UTF-8 -*-'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, '# -*- coding: UTF-8 -*-'),
     ]
 
 
 def test_partition_source_indented_encoding():
     assert partition_source('   # -*- coding: UTF-8 -*-\n') == [
-        CodePartition(CodeType.ENCODING, '   # -*- coding: UTF-8 -*-\n'),
+        CodePartition(
+            CodeType.PRE_IMPORT_CODE,
+            '   # -*- coding: UTF-8 -*-\n',
+        ),
     ]
 
 
@@ -64,8 +67,8 @@ def test_partition_source_encoding_and_shebang():
         '#!/usr/bin/env python\n'
         '# -*- coding: UTF-8 -*-\n'
     ) == [
-        CodePartition(CodeType.SHEBANG, '#!/usr/bin/env python\n'),
-        CodePartition(CodeType.ENCODING, '# -*- coding: UTF-8 -*-\n'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, '#!/usr/bin/env python\n'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, '# -*- coding: UTF-8 -*-\n'),
     ]
 
 
@@ -96,13 +99,13 @@ def test_partition_source_import_inside_code_not_an_import():
 
 def test_partition_source_docstring():
     assert partition_source('"""foo"""\n') == [
-        CodePartition(CodeType.DOCSTRING, '"""foo"""\n'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, '"""foo"""\n'),
     ]
 
 
 def test_partition_source_docstring_no_nl():
     assert partition_source('"""foo"""') == [
-        CodePartition(CodeType.DOCSTRING, '"""foo"""'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, '"""foo"""'),
     ]
 
 
@@ -112,8 +115,8 @@ def test_partition_source_multiple_docstrings():
         '"""bar"""\n'
     ) == [
         # only the first docstring should count as a docstring
-        CodePartition(CodeType.DOCSTRING, '"""foo"""\n'),
-        CodePartition(CodeType.NON_CODE, '"""bar"""\n'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, '"""foo"""\n'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, '"""bar"""\n'),
     ]
 
 
@@ -122,8 +125,8 @@ def test_partition_source_unicode_docstring():
         '# -*- coding: UTF-8 -*-\n'
         'u"""☃☃☃"""\n'
     ) == [
-        CodePartition(CodeType.ENCODING, '# -*- coding: UTF-8 -*-\n'),
-        CodePartition(CodeType.DOCSTRING, 'u"""☃☃☃"""\n'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, '# -*- coding: UTF-8 -*-\n'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, 'u"""☃☃☃"""\n'),
     ]
 
 
@@ -158,7 +161,7 @@ def test_partition_source_comment_lines():
         '# hello world\n'
         'import os\n'
     ) == [
-        CodePartition(CodeType.NON_CODE, '# hello world\n'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, '# hello world\n'),
         CodePartition(CodeType.IMPORT, 'import os\n'),
     ]
 
@@ -292,9 +295,9 @@ def test_apply_import_sorting_trivial():
 
 def test_apply_import_sorting_all_types():
     input_partitions = [
-        CodePartition(CodeType.SHEBANG, '#!/usr/bin/env python\n'),
-        CodePartition(CodeType.ENCODING, '# -*- coding: UTF-8 -*-\n'),
-        CodePartition(CodeType.DOCSTRING, '"""foo"""\n'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, '#!/usr/bin/env python\n'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, '# -*- coding: UTF-8 -*-\n'),
+        CodePartition(CodeType.PRE_IMPORT_CODE, '"""foo"""\n'),
         CodePartition(CodeType.IMPORT, 'import os\n'),
         CodePartition(CodeType.NON_CODE, '\n\n'),
         CodePartition(CodeType.CODE, 'x = 5\n'),
@@ -356,17 +359,17 @@ def test_apply_import_sorting_removes_padding_if_only_imports():
     ]
 
 
-testfiles = pytest.mark.parametrize('filename', os.listdir('test_data/inputs'))
+tfiles = pytest.mark.parametrize('filename', os.listdir('test_data/inputs'))
 
 
-@testfiles
+@tfiles
 def test_fix_file_contents(filename):
     input_contents = io.open(os.path.join('test_data/inputs', filename)).read()
     expected = io.open(os.path.join('test_data/outputs', filename)).read()
     assert fix_file_contents(input_contents) == expected
 
 
-@testfiles
+@tfiles
 def test_integration_main(filename, tmpdir):
     input_contents = io.open(os.path.join('test_data/inputs', filename)).read()
     expected = io.open(os.path.join('test_data/outputs', filename)).read()
