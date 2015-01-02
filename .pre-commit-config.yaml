@@ -3,9 +3,10 @@
     hooks:
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
-        exclude: 'tests/(inputs|outputs)'
+        exclude: ^test_data/
     -   id: autopep8-wrapper
         args: ['-i', '--ignore=E265,E309,E501']
+        exclude: ^test_data/
     -   id: check-json
     -   id: check-yaml
     -   id: debug-statements
