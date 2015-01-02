@@ -7,6 +7,7 @@ import ast
 import collections
 import io
 import tokenize
+from difflib import unified_diff
 
 import six
 from aspy.refactor_imports.import_obj import import_obj_from_str
@@ -213,6 +214,8 @@ def fix_file_contents(contents):
 def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', nargs='*')
+    parser.add_argument('--show-diff', action='store_true',
+                        help='Show only diff, do not write files.')
     args = parser.parse_args(argv)
 
     retv = 0
@@ -221,9 +224,20 @@ def main(argv=None):
         new_contents = fix_file_contents(contents)
         if contents != new_contents:
             retv = 1
-            print('Reordering imports in {0}'.format(filename))
-            with io.open(filename, 'w') as f:
-                f.write(new_contents)
+            if args.show_diff:
+                print('Showing diff for {0}'.format(filename))
+                diff = unified_diff(
+                    contents.split('\n'),
+                    new_contents.split('\n'),
+                    fromfile=filename,
+                    tofile=filename,
+                )
+                for line in diff:
+                    print(line)
+            else:
+                print('Reordering imports in {0}'.format(filename))
+                with io.open(filename, 'w') as f:
+                    f.write(new_contents)
 
     return retv
 

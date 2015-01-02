@@ -378,6 +378,10 @@ def test_integration_main(filename, tmpdir):
     with io.open(test_file_path, 'w') as f:
         f.write(input_contents)
 
+    # Check return value with --show-diff
+    retv_diff = main([test_file_path, '--show-diff'])
+    assert retv_diff == int(input_contents != expected)
+
     retv = main([test_file_path])
     # Check return value
     assert retv == int(input_contents != expected)
