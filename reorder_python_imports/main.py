@@ -6,8 +6,8 @@ import argparse
 import ast
 import collections
 import io
+import difflib
 import tokenize
-from difflib import unified_diff
 
 import six
 from aspy.refactor_imports.import_obj import import_obj_from_str
@@ -165,6 +165,14 @@ def apply_import_sorting(partitions):
             CodeType.CODE: rest,
         }[partition.code_type].append(partition)
 
+    # Need to give an import a newline if it doesn't have one (needed for no
+    # EOL)
+    imports = [
+        partition if partition.src.endswith('\n') else
+        CodePartition(CodeType.IMPORT, partition.src + '\n')
+        for partition in imports
+    ]
+
     import_obj_to_partition = dict(
         (import_obj_from_str(partition.src), partition)
         for partition in imports
@@ -211,11 +219,31 @@ def fix_file_contents(contents):
     return ''.join(part.src for part in partitioned)
 
 
+def report_diff(contents, new_contents, filename):
+    diff = ''.join(difflib.unified_diff(
+        io.StringIO(contents).readlines(),
+        io.StringIO(new_contents).readlines(),
+        fromfile=filename, tofile=filename,
+    ))
+    if not diff.endswith('\n'):
+        diff += '\n\\ No newline at end of file\n'
+
+    print(diff, end='')
+
+
+def apply_reordering(new_contents, filename):
+    print('Reordering import in {0}'.format(filename))
+    with io.open(filename, 'w') as f:
+        f.write(new_contents)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', nargs='*')
-    parser.add_argument('--show-diff', action='store_true',
-                        help='Show only diff, do not write files.')
+    parser.add_argument(
+        '--diff-only', action='store_true',
+        help='Show unified diff instead of applying reordering.',
+    )
     args = parser.parse_args(argv)
 
     retv = 0
@@ -224,20 +252,10 @@ def main(argv=None):
         new_contents = fix_file_contents(contents)
         if contents != new_contents:
             retv = 1
-            if args.show_diff:
-                print('Showing diff for {0}'.format(filename))
-                diff = unified_diff(
-                    contents.split('\n'),
-                    new_contents.split('\n'),
-                    fromfile=filename,
-                    tofile=filename,
-                )
-                for line in diff:
-                    print(line)
+            if args.diff_only:
+                report_diff(contents, new_contents, filename)
             else:
-                print('Reordering imports in {0}'.format(filename))
-                with io.open(filename, 'w') as f:
-                    f.write(new_contents)
+                apply_reordering(new_contents, filename)
 
     return retv
 

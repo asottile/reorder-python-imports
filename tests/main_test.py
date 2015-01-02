@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import ast
 import io
 import os.path
+import subprocess
 
 import pytest
 
@@ -35,7 +36,7 @@ def test_partition_source_shebang():
     ]
 
 
-def test_partiiton_source_shebang_no_nl():
+def test_partition_source_shebang_no_nl():
     assert partition_source('#!/usr/bin/env python') == [
         CodePartition(CodeType.PRE_IMPORT_CODE, '#!/usr/bin/env python'),
     ]
@@ -378,8 +379,8 @@ def test_integration_main(filename, tmpdir):
     with io.open(test_file_path, 'w') as f:
         f.write(input_contents)
 
-    # Check return value with --show-diff
-    retv_diff = main([test_file_path, '--show-diff'])
+    # Check return value with --diff-only
+    retv_diff = main([test_file_path, '--diff-only'])
     assert retv_diff == int(input_contents != expected)
 
     retv = main([test_file_path])
@@ -388,3 +389,41 @@ def test_integration_main(filename, tmpdir):
 
     # Check the contents rewritten
     assert io.open(test_file_path).read() == expected
+
+
+def _apply_patch(patch):
+    patch_proc = subprocess.Popen(('patch',), stdin=subprocess.PIPE)
+    patch_proc.communicate(patch.encode('UTF-8'))
+    assert patch_proc.returncode == 0
+
+
+def test_does_not_reorder_with_diff_only(in_tmpdir, capsys):
+    test_file_path = in_tmpdir.join('test.py').strpath
+    original_contents = 'import sys\nimport os\n'
+    with io.open(test_file_path, 'w') as test_file:
+        test_file.write(original_contents)
+
+    retv = main([test_file_path, '--diff-only'])
+    assert retv == 1
+    assert io.open(test_file_path).read() == original_contents
+    patch, _ = capsys.readouterr()
+    _apply_patch(patch)
+    assert io.open(test_file_path).read() == 'import os\nimport sys\n'
+
+
+def test_patch_multiple_files_no_eol(in_tmpdir, capsys):
+    test1filename = in_tmpdir.join('test1.py').strpath
+    test2filename = in_tmpdir.join('test2.py').strpath
+    with io.open(test1filename, 'w') as test1:
+        # Intentionally no EOL
+        test1.write('import sys\nimport os')
+
+    with io.open(test2filename, 'w') as test2:
+        test2.write('import sys\nimport os\n')
+
+    ret = main([test1filename, test2filename, '--diff-only'])
+    assert ret == 1
+    patch, _ = capsys.readouterr()
+    _apply_patch(patch)
+    assert io.open(test1filename).read() == 'import os\nimport sys\n'
+    assert io.open(test2filename).read() == 'import os\nimport sys\n'
