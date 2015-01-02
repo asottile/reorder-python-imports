@@ -214,7 +214,8 @@ def fix_file_contents(contents):
 def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', nargs='*')
-    parser.add_argument('--show-diff', action='store_true')
+    parser.add_argument('--show-diff', action='store_true',
+                        help='Show only diff, do not write files.')
     args = parser.parse_args(argv)
 
     retv = 0

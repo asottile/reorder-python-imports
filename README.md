@@ -17,13 +17,14 @@ uses static analysis more.
 
 ```
 reorder-python-imports --help
-usage: reorder-python-imports [-h] [filenames [filenames ...]]
+usage: reorder-python-imports [-h] [--show-diff] [filenames [filenames ...]]
 
 positional arguments:
   filenames
 
 optional arguments:
-  -h, --help  show this help message and exit
+  -h, --help   show this help message and exit
+  --show-diff  Show only diff, do not write files.
 ```
 
 ## As a pre-commit hook
