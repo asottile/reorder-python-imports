@@ -121,6 +121,18 @@ def partition_source(src):
     return chunks
 
 
+def combine_trailing_code_chunks(partitions):
+    chunks = list(partitions)
+
+    if chunks and chunks[-1].code_type != CodeType.IMPORT:
+        src = chunks.pop().src
+        while chunks and chunks[-1].code_type != CodeType.IMPORT:
+            src = chunks.pop().src + src
+
+        chunks.append(CodePartition(CodeType.CODE, src))
+    return chunks
+
+
 def separate_comma_imports(partitions):
     """Turns `import a, b` into `import a` and `import b`"""
     def _inner():
@@ -195,10 +207,9 @@ def apply_import_sorting(partitions):
     # beginning of the rest of the code.  To fix this, we're going to combine
     # all of that code, and then make sure there are two linebreaks to start
     restsrc = ''.join(partition.src for partition in rest)
-    restsrc = restsrc.lstrip('\n').rstrip()
+    restsrc = restsrc.rstrip()
     if restsrc:
         rest = [
-            CodePartition(CodeType.NON_CODE, '\n\n'),
             CodePartition(CodeType.CODE, restsrc + '\n'),
         ]
     else:
@@ -208,6 +219,7 @@ def apply_import_sorting(partitions):
 
 
 STEPS = (
+    combine_trailing_code_chunks,
     separate_comma_imports,
     remove_duplicated_imports,
     apply_import_sorting,

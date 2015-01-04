@@ -300,8 +300,7 @@ def test_apply_import_sorting_all_types():
         CodePartition(CodeType.PRE_IMPORT_CODE, '# -*- coding: UTF-8 -*-\n'),
         CodePartition(CodeType.PRE_IMPORT_CODE, '"""foo"""\n'),
         CodePartition(CodeType.IMPORT, 'import os\n'),
-        CodePartition(CodeType.NON_CODE, '\n\n'),
-        CodePartition(CodeType.CODE, 'x = 5\n'),
+        CodePartition(CodeType.CODE, '\n\nx = 5\n'),
     ]
     assert apply_import_sorting(input_partitions) == input_partitions
 
@@ -338,17 +337,6 @@ def test_apply_import_sorting_maintains_comments():
         CodePartition(CodeType.IMPORT, 'import foo  # noqa\n'),
     ]
     assert apply_import_sorting(input_partitions) == input_partitions
-
-
-def test_apply_import_sorting_pads_next_code():
-    assert apply_import_sorting([
-        CodePartition(CodeType.IMPORT, 'import foo\n'),
-        CodePartition(CodeType.CODE, 'x = 5\n'),
-    ]) == [
-        CodePartition(CodeType.IMPORT, 'import foo\n'),
-        CodePartition(CodeType.NON_CODE, '\n\n'),
-        CodePartition(CodeType.CODE, 'x = 5\n'),
-    ]
 
 
 def test_apply_import_sorting_removes_padding_if_only_imports():
