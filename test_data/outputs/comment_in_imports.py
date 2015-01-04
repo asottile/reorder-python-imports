@@ -2,6 +2,4 @@
 import os
 
 import six
-
-
 # Hello from nomansland
