@@ -27,7 +27,6 @@ CodePartition = collections.namedtuple('CodePartition', ('code_type', 'src'))
 TERMINATES_COMMENT = frozenset((tokenize.NL, tokenize.ENDMARKER))
 TERMINATES_DOCSTRING = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
 TERMINATES_IMPORT = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
-TERMINATES_CODE = frozenset((tokenize.ENDMARKER,))
 
 
 class TopLevelImportVisitor(ast.NodeVisitor):
@@ -103,8 +102,11 @@ def partition_source(src):
                 # Token ended right before end of file or file was empty
                 pass
             else:
-                pending_chunk_type = CodeType.CODE
-                possible_ending_tokens = TERMINATES_CODE
+                # We've reached a `CODE` block, which spans the rest of the
+                # file (intentionally timid).  Let's append that block and be
+                # done
+                chunks.append(CodePartition(CodeType.CODE, src[startpos:]))
+                break
         # Attempt to find ending of token
         elif token_type in possible_ending_tokens:
             endpos = line_offsets[erow] + ecol
