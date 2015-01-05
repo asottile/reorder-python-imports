@@ -8,7 +8,6 @@ import os.path
 import subprocess
 
 import pytest
-
 from reorder_python_imports.main import apply_import_sorting
 from reorder_python_imports.main import CodePartition
 from reorder_python_imports.main import CodeType

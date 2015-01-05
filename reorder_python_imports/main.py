@@ -5,8 +5,8 @@ from __future__ import unicode_literals
 import argparse
 import ast
 import collections
-import io
 import difflib
+import io
 import tokenize
 
 import six
