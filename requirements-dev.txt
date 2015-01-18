@@ -1,4 +1,5 @@
 -e .
+astroid<1.3.3
 coverage
 flake8
 pre-commit

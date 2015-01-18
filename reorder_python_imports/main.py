@@ -53,7 +53,7 @@ def partition_source(src):
     """Partitions source into a list of `CodePartition`s for import
     refactoring.
     """
-    # pylint:disable=too-many-locals
+    # pylint:disable=too-many-branches,too-many-locals,too-many-statements
     if type(src) is not six.text_type:
         raise TypeError('Expected text but got `{0}`'.format(type(src)))
 
@@ -74,13 +74,17 @@ def partition_source(src):
     possible_ending_tokens = None
     seen_import = False
     for (
-            token_type, _, (srow, scol), (erow, ecol), _,
+            token_type, token_text, (srow, scol), (erow, ecol), _,
     ) in tokenize.generate_tokens(io.StringIO(src).readline):
         # Searching for a start of a chunk
         if pending_chunk_type is None:
             if not seen_import and token_type == tokenize.COMMENT:
-                pending_chunk_type = CodeType.PRE_IMPORT_CODE
-                possible_ending_tokens = TERMINATES_COMMENT
+                if 'noreorder' in token_text:
+                    chunks.append(CodePartition(CodeType.CODE, src[startpos:]))
+                    break
+                else:
+                    pending_chunk_type = CodeType.PRE_IMPORT_CODE
+                    possible_ending_tokens = TERMINATES_COMMENT
             elif not seen_import and token_type == tokenize.STRING:
                 pending_chunk_type = CodeType.PRE_IMPORT_CODE
                 possible_ending_tokens = TERMINATES_DOCSTRING
@@ -96,8 +100,12 @@ def partition_source(src):
                 startpos = endpos
                 chunks.append(CodePartition(CodeType.NON_CODE, srctext))
             elif token_type == tokenize.COMMENT:
-                pending_chunk_type = CodeType.CODE
-                possible_ending_tokens = TERMINATES_COMMENT
+                if 'noreorder' in token_text:
+                    chunks.append(CodePartition(CodeType.CODE, src[startpos:]))
+                    break
+                else:
+                    pending_chunk_type = CodeType.CODE
+                    possible_ending_tokens = TERMINATES_COMMENT
             elif token_type == tokenize.ENDMARKER:
                 # Token ended right before end of file or file was empty
                 pass
@@ -115,6 +123,9 @@ def partition_source(src):
             chunks.append(CodePartition(pending_chunk_type, srctext))
             pending_chunk_type = None
             possible_ending_tokens = None
+        elif token_type == tokenize.COMMENT and 'noreorder' in token_text:
+            chunks.append(CodePartition(CodeType.CODE, src[startpos:]))
+            break
 
     # Make sure we're not removing any code
     assert ''.join(partition.src for partition in chunks) == src
