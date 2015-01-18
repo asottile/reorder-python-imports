@@ -33,3 +33,86 @@ See [pre-commit](https://github.com/pre-commit/pre-commit) for instructions
 
 Hooks available:
 - `reorder-python-imports` - This hook reorders imports in python files.
+
+
+## What does it do?
+
+### Separates imports into three sections
+
+```
+import sys
+import pyramid
+import reorder_python_imports
+```
+
+becomes
+
+```
+import sys
+
+import pyramid
+
+import reorder_python_imports
+```
+
+### `import` imports before `from` imports
+
+```
+from os import path
+import sys
+```
+
+becomes
+
+```
+import sys
+from os import path
+```
+
+### Splits `from` imports (may be configurable in the future!)
+
+```
+from os.path import abspath, exists
+```
+
+becomes
+
+```
+from os.path import abspath
+from os.path import exists
+```
+
+### Using `# noreorder`
+
+Lines containing and after lines which contain a `# noreorder` comment will
+be ignored.  Additionally any imports that appear after non-whitespace
+non-comment lines will be ignored.
+
+For instance, these will not be changed:
+
+```
+import sys
+
+try:  # not import, not whitespace
+    import foo
+except ImportError:
+    pass
+```
+
+
+```
+import sys
+
+import reorder_python_imports
+
+import matplotlib  # noreorder
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+```
+
+```
+# noreorder
+import sys
+import pyramid
+import reorder_python_imports
+```
