@@ -25,6 +25,12 @@ positional arguments:
 optional arguments:
   -h, --help   show this help message and exit
   --diff-only  Show unified diff instead of applying reordering.
+  --add-import ADD_IMPORT
+                        Import to add to each file. Can be specified multiple
+                        times.
+  --remove-import REMOVE_IMPORT
+                        Import to remove from each file. Can be specified
+                        multiple times.
 ```
 
 ## As a pre-commit hook
@@ -115,4 +121,32 @@ import matplotlib.pyplot as plt
 import sys
 import pyramid
 import reorder_python_imports
+```
+
+## Adding / Removing Imports
+
+Let's say I want to enforce `absolute_import` across my codebase.  I can use: `--add-import 'from __future__ import absolute_import`.
+
+```
+$ cat test.py
+print('Hello world')
+$ reorder-python-imports --add-import 'from __future__ import absolute_import' test.py
+Reordering import in test.py
+$ cat test.py
+from __future__ import absolute_import
+print('Hello world')
+```
+
+Let's say I no longer care about supporting Python 2.5, I can remove `from __future__ import with_statement` with `--remove-import 'from __future__ import with_statement`
+
+```
+$ cat test.py
+from __future__ import with_statement
+with open('foo.txt', 'w') as foo_f:
+    foo_f.write('hello world')
+$ reorder-python-imports --remove-import 'from __future__ import with_statement' test.py
+Reordering import in test.py
+$ cat test.py
+with open('foo.txt', 'w') as foo_f:
+    foo_f.write('hello world')
 ```
