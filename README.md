@@ -125,7 +125,7 @@ import reorder_python_imports
 
 ## Adding / Removing Imports
 
-Let's say I want to enforce `absolute_import` across my codebase.  I can use: `--add-import 'from __future__ import absolute_import`.
+Let's say I want to enforce `absolute_import` across my codebase.  I can use: `--add-import 'from __future__ import absolute_import'`.
 
 ```
 $ cat test.py
@@ -137,7 +137,7 @@ from __future__ import absolute_import
 print('Hello world')
 ```
 
-Let's say I no longer care about supporting Python 2.5, I can remove `from __future__ import with_statement` with `--remove-import 'from __future__ import with_statement`
+Let's say I no longer care about supporting Python 2.5, I can remove `from __future__ import with_statement` with `--remove-import 'from __future__ import with_statement'`
 
 ```
 $ cat test.py
