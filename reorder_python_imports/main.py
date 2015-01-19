@@ -300,7 +300,7 @@ def report_diff(contents, new_contents, filename):
 
 
 def apply_reordering(new_contents, filename):
-    print('Reordering import in {0}'.format(filename))
+    print('Reordering imports in {0}'.format(filename))
     with io.open(filename, 'w') as f:
         f.write(new_contents)
 

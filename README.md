@@ -131,7 +131,7 @@ Let's say I want to enforce `absolute_import` across my codebase.  I can use: `-
 $ cat test.py
 print('Hello world')
 $ reorder-python-imports --add-import 'from __future__ import absolute_import' test.py
-Reordering import in test.py
+Reordering imports in test.py
 $ cat test.py
 from __future__ import absolute_import
 print('Hello world')
@@ -145,7 +145,7 @@ from __future__ import with_statement
 with open('foo.txt', 'w') as foo_f:
     foo_f.write('hello world')
 $ reorder-python-imports --remove-import 'from __future__ import with_statement' test.py
-Reordering import in test.py
+Reordering imports in test.py
 $ cat test.py
 with open('foo.txt', 'w') as foo_f:
     foo_f.write('hello world')
