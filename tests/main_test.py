@@ -347,6 +347,63 @@ def test_apply_import_sorting_removes_padding_if_only_imports():
     ]
 
 
+def test_add_import_trivial():
+    assert fix_file_contents(
+        '',
+        imports_to_add=('from __future__ import absolute_import',),
+    ) == ''
+
+
+def test_add_import_import_already_there():
+    assert fix_file_contents(
+        'from __future__ import absolute_import\n',
+        imports_to_add=('from __future__ import absolute_import',),
+    ) == 'from __future__ import absolute_import\n'
+
+
+def test_add_import_not_there():
+    assert fix_file_contents(
+        'import os',
+        imports_to_add=('from __future__ import absolute_import',),
+    ) == (
+        'from __future__ import absolute_import\n'
+        '\n'
+        'import os\n'
+    )
+
+
+def test_does_not_put_before_leading_comment():
+    assert fix_file_contents(
+        '# -*- coding: UTF-8 -*-',
+        imports_to_add=('from __future__ import absolute_import',),
+    ) == (
+        '# -*- coding: UTF-8 -*-\n'
+        'from __future__ import absolute_import\n'
+    )
+
+
+def test_remove_import_trivial():
+    assert fix_file_contents(
+        '',
+        imports_to_remove=('from __future__ import with_statement',),
+    ) == ''
+
+
+def test_remove_import_import_not_there():
+    assert fix_file_contents(
+        'import os\n',
+        imports_to_remove=('from __future__ import with_statement',),
+    ) == 'import os\n'
+
+
+def test_remove_imports_actually_removes():
+    assert fix_file_contents(
+        'from __future__ import with_statement\n\n'
+        'import os\n',
+        imports_to_remove=('from  __future__ import with_statement',),
+    ) == 'import os\n'
+
+
 tfiles = pytest.mark.parametrize('filename', os.listdir('test_data/inputs'))
 
 

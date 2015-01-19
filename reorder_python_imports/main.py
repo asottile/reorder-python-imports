@@ -6,6 +6,7 @@ import argparse
 import ast
 import collections
 import difflib
+import functools
 import io
 import tokenize
 
@@ -47,6 +48,10 @@ def get_line_offsets_by_line_no(src):
     for line in src.splitlines():
         offsets.append(offsets[-1] + len(line) + 1)
     return offsets
+
+
+def _partitions_to_src(partitions):
+    return ''.join(part.src for part in partitions)
 
 
 def partition_source(src):
@@ -128,16 +133,17 @@ def partition_source(src):
             break
 
     # Make sure we're not removing any code
-    assert ''.join(partition.src for partition in chunks) == src
+    assert _partitions_to_src(chunks) == src
     return chunks
 
 
 def combine_trailing_code_chunks(partitions):
     chunks = list(partitions)
 
-    if chunks and chunks[-1].code_type != CodeType.IMPORT:
+    NON_COMBINABLE = (CodeType.IMPORT, CodeType.PRE_IMPORT_CODE)
+    if chunks and chunks[-1].code_type not in NON_COMBINABLE:
         src = chunks.pop().src
-        while chunks and chunks[-1].code_type != CodeType.IMPORT:
+        while chunks and chunks[-1].code_type not in NON_COMBINABLE:
             src = chunks.pop().src + src
 
         chunks.append(CodePartition(CodeType.CODE, src))
@@ -158,6 +164,40 @@ def separate_comma_imports(partitions):
                 else:
                     yield partition
             else:
+                yield partition
+
+    return list(_inner())
+
+
+def add_imports(partitions, to_add=()):
+    partitions = list(partitions)
+    if not _partitions_to_src(partitions).strip():
+        return partitions
+
+    # If we don't have a trailing newline, this refactor is wrong
+    if not partitions[-1].src.endswith('\n'):
+        partitions[-1] = CodePartition(
+            partitions[-1].code_type,
+            partitions[-1].src + '\n',
+        )
+
+    return partitions + [
+        CodePartition(CodeType.IMPORT, imp_statement.strip() + '\n')
+        for imp_statement in to_add
+    ]
+
+
+def remove_imports(partitions, to_remove=()):
+    to_remove_imports = set(
+        import_obj_from_str(imp_statement) for imp_statement in to_remove
+    )
+
+    def _inner():
+        for partition in partitions:
+            if (
+                    partition.code_type is not CodeType.IMPORT or
+                    import_obj_from_str(partition.src) not in to_remove_imports
+            ):
                 yield partition
 
     return list(_inner())
@@ -217,7 +257,7 @@ def apply_import_sorting(partitions):
     # There's the potential that we moved a bunch of whitespace onto the
     # beginning of the rest of the code.  To fix this, we're going to combine
     # all of that code, and then make sure there are two linebreaks to start
-    restsrc = ''.join(partition.src for partition in rest)
+    restsrc = _partitions_to_src(rest)
     restsrc = restsrc.rstrip()
     if restsrc:
         rest = [
@@ -229,19 +269,22 @@ def apply_import_sorting(partitions):
     return pre_import_code + new_imports + rest
 
 
-STEPS = (
-    combine_trailing_code_chunks,
-    separate_comma_imports,
-    remove_duplicated_imports,
-    apply_import_sorting,
-)
+def _get_steps(imports_to_add, imports_to_remove):
+    yield combine_trailing_code_chunks
+    yield separate_comma_imports
+    if imports_to_add:
+        yield functools.partial(add_imports, to_add=imports_to_add)
+    if imports_to_remove:
+        yield functools.partial(remove_imports, to_remove=imports_to_remove)
+    yield remove_duplicated_imports
+    yield apply_import_sorting
 
 
-def fix_file_contents(contents):
+def fix_file_contents(contents, imports_to_add=(), imports_to_remove=()):
     partitioned = partition_source(contents)
-    for step in STEPS:
+    for step in _get_steps(imports_to_add, imports_to_remove):
         partitioned = step(partitioned)
-    return ''.join(part.src for part in partitioned)
+    return _partitions_to_src(partitioned)
 
 
 def report_diff(contents, new_contents, filename):
@@ -269,12 +312,27 @@ def main(argv=None):
         '--diff-only', action='store_true',
         help='Show unified diff instead of applying reordering.',
     )
+    parser.add_argument(
+        '--add-import', action='append',
+        help='Import to add to each file.  Can be specified multiple times.',
+    )
+    parser.add_argument(
+        '--remove-import', action='append',
+        help=(
+            'Import to remove from each file.  '
+            'Can be specified multiple times.'
+        ),
+    )
     args = parser.parse_args(argv)
 
     retv = 0
     for filename in args.filenames:
         contents = io.open(filename).read()
-        new_contents = fix_file_contents(contents)
+        new_contents = fix_file_contents(
+            contents,
+            imports_to_add=args.add_import,
+            imports_to_remove=args.remove_import,
+        )
         if contents != new_contents:
             retv = 1
             if args.diff_only:
