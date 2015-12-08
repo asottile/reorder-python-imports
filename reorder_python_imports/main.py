@@ -217,7 +217,7 @@ def remove_duplicated_imports(partitions):
     return list(_inner())
 
 
-def apply_import_sorting(partitions):
+def apply_import_sorting(partitions, **sort_kwargs):
     pre_import_code = []
     imports = []
     trash = []
@@ -244,7 +244,7 @@ def apply_import_sorting(partitions):
     )
 
     new_imports = []
-    sorted_blocks = sort(import_obj_to_partition.keys())
+    sorted_blocks = sort(import_obj_to_partition.keys(), **sort_kwargs)
     for block in sorted_blocks:
         for import_obj in block:
             new_imports.append(import_obj_to_partition[import_obj])
@@ -269,7 +269,7 @@ def apply_import_sorting(partitions):
     return pre_import_code + new_imports + rest
 
 
-def _get_steps(imports_to_add, imports_to_remove):
+def _get_steps(imports_to_add, imports_to_remove, **sort_kwargs):
     yield combine_trailing_code_chunks
     yield separate_comma_imports
     if imports_to_add:
@@ -277,12 +277,14 @@ def _get_steps(imports_to_add, imports_to_remove):
     if imports_to_remove:
         yield functools.partial(remove_imports, to_remove=imports_to_remove)
     yield remove_duplicated_imports
-    yield apply_import_sorting
+    yield functools.partial(apply_import_sorting, **sort_kwargs)
 
 
-def fix_file_contents(contents, imports_to_add=(), imports_to_remove=()):
+def fix_file_contents(
+        contents, imports_to_add=(), imports_to_remove=(), **sort_kwargs
+):
     partitioned = partition_source(contents)
-    for step in _get_steps(imports_to_add, imports_to_remove):
+    for step in _get_steps(imports_to_add, imports_to_remove, **sort_kwargs):
         partitioned = step(partitioned)
     return _partitions_to_src(partitioned)
 
@@ -323,6 +325,13 @@ def main(argv=None):
             'Can be specified multiple times.'
         ),
     )
+    parser.add_argument(
+        '--application-directories', default='.',
+        help=(
+            'Colon separated directories that are considered top-level '
+            'application directories.  Defaults to `%(default)s`'
+        ),
+    )
     args = parser.parse_args(argv)
 
     retv = 0
@@ -332,6 +341,7 @@ def main(argv=None):
             contents,
             imports_to_add=args.add_import,
             imports_to_remove=args.remove_import,
+            application_directories=args.application_directories.split(':'),
         )
         if contents != new_contents:
             retv = 1

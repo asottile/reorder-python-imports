@@ -6,6 +6,7 @@ import ast
 import io
 import os.path
 import subprocess
+import sys
 
 import pytest
 from reorder_python_imports.main import apply_import_sorting
@@ -471,3 +472,46 @@ def test_patch_multiple_files_no_eol(in_tmpdir, capsys):
     _apply_patch(patch)
     assert io.open(test1filename).read() == 'import os\nimport sys\n'
     assert io.open(test2filename).read() == 'import os\nimport sys\n'
+
+
+@pytest.yield_fixture
+def restore_sys_path():
+    before = sys.path[:]
+    yield
+    sys.path[:] = before
+
+
+@pytest.mark.usefixtures('in_tmpdir', 'restore_sys_path')
+def test_additional_directories_integration():
+    if '' in sys.path:  # pragma: no cover (depends on run environment)
+        sys.path.remove('')
+
+    # Intentionally avoiding 'tests' and 'testing' because those would clash
+    # with the names of this project
+    os.makedirs('nottests/nottesting')
+    io.open('nottests/nottesting/__init__.py', 'w').close()
+
+    with io.open('foo.py', 'w') as foo_file:
+        foo_file.write(
+            'import thirdparty\n'
+            'import nottests\n'
+            'import nottesting\n'
+        )
+
+    # Without the new option
+    main(('foo.py',))
+    assert io.open('foo.py').read() == (
+        'import nottesting\n'
+        'import thirdparty\n'
+        '\n'
+        'import nottests\n'
+    )
+
+    # With the new option
+    main(('foo.py', '--application-directories', '.:nottests'))
+    assert io.open('foo.py').read() == (
+        'import thirdparty\n'
+        '\n'
+        'import nottesting\n'
+        'import nottests\n'
+    )
