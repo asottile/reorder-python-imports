@@ -315,6 +315,10 @@ def main(argv=None):
         help='Show unified diff instead of applying reordering.',
     )
     parser.add_argument(
+        '--stdout', action='store_true',
+        help='Print updated files to stdout.',
+    )
+    parser.add_argument(
         '--add-import', action='append',
         help='Import to add to each file.  Can be specified multiple times.',
     )
@@ -347,6 +351,8 @@ def main(argv=None):
             retv = 1
             if args.diff_only:
                 report_diff(contents, new_contents, filename)
+            elif args.stdout:
+                print(new_contents)
             else:
                 apply_reordering(new_contents, filename)
 
