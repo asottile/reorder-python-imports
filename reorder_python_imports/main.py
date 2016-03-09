@@ -8,6 +8,7 @@ import collections
 import difflib
 import functools
 import io
+import sys
 import tokenize
 
 import six
@@ -310,9 +311,14 @@ def apply_reordering(new_contents, filename):
 def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', nargs='*')
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group(required=False)
+    group.add_argument(
         '--diff-only', action='store_true',
         help='Show unified diff instead of applying reordering.',
+    )
+    group.add_argument(
+        '--print-only', action='store_true',
+        help='Print the output of a single file after reordering.',
     )
     parser.add_argument(
         '--add-import', action='append',
@@ -347,6 +353,9 @@ def main(argv=None):
             retv = 1
             if args.diff_only:
                 report_diff(contents, new_contents, filename)
+            elif args.print_only:
+                print('==> {0} <=='.format(filename), file=sys.stderr)
+                print(new_contents, end='')
             else:
                 apply_reordering(new_contents, filename)
 
