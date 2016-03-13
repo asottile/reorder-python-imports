@@ -425,15 +425,23 @@ def test_integration_main(filename, tmpdir):
         f.write(input_contents)
 
     # Check return value with --diff-only
-    retv_diff = main([test_file_path, '--diff-only'])
+    retv_diff = main((test_file_path, '--diff-only'))
     assert retv_diff == int(input_contents != expected)
 
-    retv = main([test_file_path])
+    retv = main((test_file_path,))
     # Check return value
     assert retv == int(input_contents != expected)
 
     # Check the contents rewritten
     assert io.open(test_file_path).read() == expected
+
+
+def test_integration_main_stdout(capsys):
+    ret = main(('--print-only', 'test_data/inputs/needs_reordering.py'))
+    assert ret == 1
+    out, err = capsys.readouterr()
+    assert out == 'import os\n\nimport six\n\nimport reorder_python_imports\n'
+    assert err == '==> test_data/inputs/needs_reordering.py <==\n'
 
 
 def _apply_patch(patch):
@@ -448,7 +456,7 @@ def test_does_not_reorder_with_diff_only(in_tmpdir, capsys):
     with io.open(test_file_path, 'w') as test_file:
         test_file.write(original_contents)
 
-    retv = main([test_file_path, '--diff-only'])
+    retv = main((test_file_path, '--diff-only'))
     assert retv == 1
     assert io.open(test_file_path).read() == original_contents
     patch, _ = capsys.readouterr()
@@ -466,7 +474,7 @@ def test_patch_multiple_files_no_eol(in_tmpdir, capsys):
     with io.open(test2filename, 'w') as test2:
         test2.write('import sys\nimport os\n')
 
-    ret = main([test1filename, test2filename, '--diff-only'])
+    ret = main((test1filename, test2filename, '--diff-only'))
     assert ret == 1
     patch, _ = capsys.readouterr()
     _apply_patch(patch)
