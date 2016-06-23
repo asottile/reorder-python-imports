@@ -7,7 +7,6 @@
     -   id: autopep8-wrapper
         exclude: ^test_data/
     -   id: check-docstring-first
-    -   id: check-json
     -   id: check-yaml
     -   id: debug-statements
     -   id: name-tests-test

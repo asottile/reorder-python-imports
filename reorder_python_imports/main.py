@@ -61,7 +61,7 @@ def partition_source(src):
     """
     # pylint:disable=too-many-branches,too-many-locals,too-many-statements
     if type(src) is not six.text_type:
-        raise TypeError('Expected text but got `{0}`'.format(type(src)))
+        raise TypeError('Expected text but got `{}`'.format(type(src)))
 
     # In python2, ast.parse(text_string_with_encoding_pragma) raises
     # SyntaxError: encoding declaration in Unicode string
@@ -303,7 +303,7 @@ def report_diff(contents, new_contents, filename):
 
 
 def apply_reordering(new_contents, filename):
-    print('Reordering imports in {0}'.format(filename))
+    print('Reordering imports in {}'.format(filename))
     with io.open(filename, 'w') as f:
         f.write(new_contents)
 
@@ -354,7 +354,7 @@ def main(argv=None):
             if args.diff_only:
                 report_diff(contents, new_contents, filename)
             elif args.print_only:
-                print('==> {0} <=='.format(filename), file=sys.stderr)
+                print('==> {} <=='.format(filename), file=sys.stderr)
                 print(new_contents, end='')
             else:
                 apply_reordering(new_contents, filename)
