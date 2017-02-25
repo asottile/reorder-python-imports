@@ -5,7 +5,7 @@ setup(
     name='reorder_python_imports',
     description='Tool for reordering python imports',
     url='https://github.com/asottile/reorder_python_imports',
-    version='0.3.1',
+    version='0.3.2',
     author='Anthony Sottile',
     author_email='asottile@umich.edu',
     classifiers=[
@@ -20,7 +20,7 @@ setup(
     ],
     packages=find_packages(exclude=('tests*', 'testing*')),
     install_requires=[
-        'aspy.refactor_imports>=0.5.0',
+        'aspy.refactor_imports>=0.5.2',
         'cached-property',
         'six',
     ],
