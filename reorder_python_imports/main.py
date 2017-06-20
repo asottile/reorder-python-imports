@@ -218,7 +218,7 @@ def remove_duplicated_imports(partitions):
     return list(_inner())
 
 
-def apply_import_sorting(partitions, **sort_kwargs):
+def apply_import_sorting(partitions, separate_relative=False, **sort_kwargs):
     pre_import_code = []
     imports = []
     trash = []
@@ -246,8 +246,6 @@ def apply_import_sorting(partitions, **sort_kwargs):
 
     new_imports = []
     relative_imports = []
-
-    separate_relative = sort_kwargs.pop('separate_relative', False)
 
     sorted_blocks = sort(import_obj_to_partition.keys(), **sort_kwargs)
     for block in sorted_blocks:
