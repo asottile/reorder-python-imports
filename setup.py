@@ -20,7 +20,7 @@ setup(
     ],
     packages=find_packages(exclude=('tests*', 'testing*')),
     install_requires=[
-        'aspy.refactor_imports>=0.5.2',
+        'aspy.refactor_imports>=0.5.3',
         'cached-property',
         'six',
     ],

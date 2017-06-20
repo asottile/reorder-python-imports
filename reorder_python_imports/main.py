@@ -245,11 +245,22 @@ def apply_import_sorting(partitions, **sort_kwargs):
     )
 
     new_imports = []
+    relative_imports = []
+
+    separate_relative = sort_kwargs.pop('separate_relative', False)
+
     sorted_blocks = sort(import_obj_to_partition.keys(), **sort_kwargs)
     for block in sorted_blocks:
         for import_obj in block:
-            new_imports.append(import_obj_to_partition[import_obj])
+            if separate_relative and import_obj.is_explicit_relative:
+                relative_imports.append(import_obj_to_partition[import_obj])
+            else:
+                new_imports.append(import_obj_to_partition[import_obj])
+
         new_imports.append(CodePartition(CodeType.NON_CODE, '\n'))
+
+        if relative_imports:
+            relative_imports.insert(0, CodePartition(CodeType.NON_CODE, '\n'))
     # XXX: I want something like [x].join(...) (like str join) but for now
     # this works
     if new_imports:
@@ -267,7 +278,7 @@ def apply_import_sorting(partitions, **sort_kwargs):
     else:
         rest = []
 
-    return pre_import_code + new_imports + rest
+    return pre_import_code + new_imports + relative_imports + rest
 
 
 def _get_steps(imports_to_add, imports_to_remove, **sort_kwargs):
@@ -338,6 +349,15 @@ def main(argv=None):
             'application directories.  Defaults to `%(default)s`'
         ),
     )
+
+    parser.add_argument(
+        '--separate-relative', action='store_true',
+        help=(
+            'Put relative imports into bottom and seperate with other local '
+            'imports(absolute import) with an new line .'
+        ),
+    )
+
     args = parser.parse_args(argv)
 
     retv = 0
@@ -347,6 +367,7 @@ def main(argv=None):
             contents,
             imports_to_add=args.add_import,
             imports_to_remove=args.remove_import,
+            separate_relative=args.separate_relative,
             application_directories=args.application_directories.split(':'),
         )
         if contents != new_contents:
