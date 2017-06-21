@@ -218,7 +218,12 @@ def remove_duplicated_imports(partitions):
     return list(_inner())
 
 
-def apply_import_sorting(partitions, separate_relative=False, **sort_kwargs):
+def apply_import_sorting(
+        partitions,
+        separate_relative=False,
+        separate_from_import=False,
+        **sort_kwargs
+):
     pre_import_code = []
     imports = []
     trash = []
@@ -247,12 +252,30 @@ def apply_import_sorting(partitions, separate_relative=False, **sort_kwargs):
     new_imports = []
     relative_imports = []
 
+    def _import_type_switches(last_import_obj, import_obj):
+        """Returns True if separate_from_import is True and  `import_obj` is
+        :class:`aspy.refactor_imports.import_obj.FromImport`
+        and ``last_import_obj`` is
+        :class:`aspy.refactor_imports.import_obj.ImportImport`
+        """
+        return (
+            separate_from_import and
+            last_import_obj is not None and
+            type(last_import_obj) is not type(import_obj)
+        )
+
     sorted_blocks = sort(import_obj_to_partition.keys(), **sort_kwargs)
     for block in sorted_blocks:
+        last_import_obj = None
+
         for import_obj in block:
             if separate_relative and import_obj.is_explicit_relative:
                 relative_imports.append(import_obj_to_partition[import_obj])
             else:
+                if _import_type_switches(last_import_obj, import_obj):
+                    new_imports.append(CodePartition(CodeType.NON_CODE, '\n'))
+
+                last_import_obj = import_obj
                 new_imports.append(import_obj_to_partition[import_obj])
 
         new_imports.append(CodePartition(CodeType.NON_CODE, '\n'))
@@ -356,6 +379,14 @@ def main(argv=None):
         ),
     )
 
+    parser.add_argument(
+        '--separate-from-import', action='store_true',
+        help=(
+            'Seperate `from xx import xx` imports from `import xx` imports'
+            ' with an new line .'
+        ),
+    )
+
     args = parser.parse_args(argv)
 
     retv = 0
@@ -366,6 +397,7 @@ def main(argv=None):
             imports_to_add=args.add_import,
             imports_to_remove=args.remove_import,
             separate_relative=args.separate_relative,
+            separate_from_import=args.separate_from_import,
             application_directories=args.application_directories.split(':'),
         )
         if contents != new_contents:
