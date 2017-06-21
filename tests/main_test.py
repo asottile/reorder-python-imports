@@ -363,6 +363,36 @@ def test_apply_import_sorting_sorts_imports_with_separate_relative():
     ]
 
 
+def test_apply_import_sorting_sorts_imports_with_separate_from_import():
+    assert apply_import_sorting([
+        # local imports
+        CodePartition(
+            CodeType.IMPORT, 'from reorder_python_imports import main\n',
+        ),
+        CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
+        # site-package imports
+        CodePartition(CodeType.IMPORT, 'from six import text_type\n'),
+        CodePartition(CodeType.IMPORT, 'import aspy\n'),
+        # System imports (out of order)
+        CodePartition(CodeType.IMPORT, 'from os import path\n'),
+        CodePartition(CodeType.IMPORT, 'import os\n'),
+    ], separate_from_import=True) == [
+        CodePartition(CodeType.IMPORT, 'import os\n'),
+        CodePartition(CodeType.NON_CODE, '\n'),
+        CodePartition(CodeType.IMPORT, 'from os import path\n'),
+        CodePartition(CodeType.NON_CODE, '\n'),
+        CodePartition(CodeType.IMPORT, 'import aspy\n'),
+        CodePartition(CodeType.NON_CODE, '\n'),
+        CodePartition(CodeType.IMPORT, 'from six import text_type\n'),
+        CodePartition(CodeType.NON_CODE, '\n'),
+        CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
+        CodePartition(CodeType.NON_CODE, '\n'),
+        CodePartition(
+            CodeType.IMPORT, 'from reorder_python_imports import main\n',
+        ),
+    ]
+
+
 def test_apply_import_sorting_maintains_comments():
     input_partitions = [
         CodePartition(CodeType.IMPORT, 'import foo  # noqa\n'),
@@ -584,4 +614,38 @@ def test_separate_relative_integration():
         'from foo import bar\n'
         '\n'
         'from . import bar\n'
+    )
+
+
+@pytest.mark.usefixtures('in_tmpdir')
+def test_separate_from_import_integration():
+    os.makedirs('foo/bar')
+    io.open('foo/__init__.py', 'w').close()
+    io.open('foo/bar/__init__.py', 'w').close()
+
+    with io.open('foo/foo.py', 'w') as foo_file:
+        foo_file.write(
+            'import thirdparty\n'
+            'import foo.bar\n'
+            'from foo import bar\n'
+            'from . import bar\n'
+        )
+
+    main(('foo/foo.py',))
+    assert io.open('foo/foo.py').read() == (
+        'import thirdparty\n'
+        '\n'
+        'import foo.bar\n'
+        'from . import bar\n'
+        'from foo import bar\n'
+    )
+
+    main(('foo/foo.py', '--separate-from-import'))
+    assert io.open('foo/foo.py').read() == (
+        'import thirdparty\n'
+        '\n'
+        'import foo.bar\n'
+        '\n'
+        'from . import bar\n'
+        'from foo import bar\n'
     )
