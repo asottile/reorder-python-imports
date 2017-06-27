@@ -649,3 +649,34 @@ def test_separate_from_import_integration():
         'from . import bar\n'
         'from foo import bar\n'
     )
+
+
+@pytest.mark.usefixtures('in_tmpdir')
+def test_separate_from_import_and_relative_integration():
+    os.makedirs('foo/bar')
+    io.open('foo/__init__.py', 'w').close()
+    io.open('foo/bar/__init__.py', 'w').close()
+
+    with io.open('foo/foo.py', 'w') as foo_file:
+        foo_file.write(
+            'import thirdparty\n'
+            'from thirdparty import foo\n'
+            'from . import bar\n'
+        )
+
+    main(('foo/foo.py',))
+    assert io.open('foo/foo.py').read() == (
+        'import thirdparty\n'
+        'from thirdparty import foo\n'
+        '\n'
+        'from . import bar\n'
+    )
+
+    main(('foo/foo.py', '--separate-from-import', '--separate-relative'))
+    assert io.open('foo/foo.py').read() == (
+        'import thirdparty\n'
+        '\n'
+        'from thirdparty import foo\n'
+        '\n'
+        'from . import bar\n'
+    )

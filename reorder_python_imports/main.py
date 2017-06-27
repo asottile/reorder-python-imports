@@ -278,7 +278,9 @@ def apply_import_sorting(
                 last_import_obj = import_obj
                 new_imports.append(import_obj_to_partition[import_obj])
 
-        new_imports.append(CodePartition(CodeType.NON_CODE, '\n'))
+        # The new line may has added by separate_from_import option
+        if new_imports and new_imports[-1].src != '\n':
+            new_imports.append(CodePartition(CodeType.NON_CODE, '\n'))
 
         if relative_imports:
             relative_imports.insert(0, CodePartition(CodeType.NON_CODE, '\n'))
