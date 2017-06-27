@@ -278,10 +278,16 @@ def apply_import_sorting(
                 last_import_obj = import_obj
                 new_imports.append(import_obj_to_partition[import_obj])
 
-        new_imports.append(CodePartition(CodeType.NON_CODE, '\n'))
+        # There's an edge case if both --separate-relative and
+        # --separate-from-import are passed where the first-party imports
+        # will *all* be explicit relative imports and sorted into the special
+        # block.  In this case, we don't want the first-party block to just
+        # be a single newline.  See #23
+        if last_import_obj is not None:
+            new_imports.append(CodePartition(CodeType.NON_CODE, '\n'))
 
-        if relative_imports:
-            relative_imports.insert(0, CodePartition(CodeType.NON_CODE, '\n'))
+    if relative_imports:
+        relative_imports.insert(0, CodePartition(CodeType.NON_CODE, '\n'))
     # XXX: I want something like [x].join(...) (like str join) but for now
     # this works
     if new_imports:
