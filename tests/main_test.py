@@ -649,3 +649,17 @@ def test_separate_from_import_integration():
         'from . import bar\n'
         'from foo import bar\n'
     )
+
+
+def test_separate_relative_and_separate_from():
+    ret = fix_file_contents(
+        'import thirdparty\n'
+        'from . import bar\n',
+        separate_from_import=True,
+        separate_relative=True,
+    )
+    assert ret == (
+        'import thirdparty\n'
+        '\n'
+        'from . import bar\n'
+    )
