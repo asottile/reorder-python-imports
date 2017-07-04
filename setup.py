@@ -5,7 +5,7 @@ setup(
     name='reorder_python_imports',
     description='Tool for reordering python imports',
     url='https://github.com/asottile/reorder_python_imports',
-    version='0.3.4',
+    version='0.3.5',
     author='Anthony Sottile',
     author_email='asottile@umich.edu',
     classifiers=[
