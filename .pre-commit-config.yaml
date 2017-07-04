@@ -1,5 +1,5 @@
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    sha: v0.7.1
+    sha: v0.9.1
     hooks:
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
@@ -14,12 +14,12 @@
     -   id: flake8
         exclude: ^test_data/
 -   repo: https://github.com/pre-commit/pre-commit
-    sha: v0.13.3
+    sha: v0.15.0
     hooks:
     -   id: validate_config
     -   id: validate_manifest
 -   repo: https://github.com/asottile/reorder_python_imports
-    sha: v0.3.1
+    sha: v0.3.4
     hooks:
     -   id: reorder-python-imports
         exclude: ^test_data/
