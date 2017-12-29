@@ -25,6 +25,16 @@ class CodeType(object):
 
 CodePartition = collections.namedtuple('CodePartition', ('code_type', 'src'))
 
+FUTURE_IMPORTS = (
+    ('py22', ('nested_scopes',)),
+    ('py23', ('generators',)),
+    ('py26', ('with_statement',)),
+    (
+        'py3',
+        ('division', 'absolute_import', 'print_function', 'unicode_literals'),
+    ),
+    ('py37', ('generator_stop',)),
+)
 
 TERMINATES_COMMENT = frozenset((tokenize.NL, tokenize.ENDMARKER))
 TERMINATES_DOCSTRING = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
@@ -311,10 +321,8 @@ def apply_import_sorting(
 def _get_steps(imports_to_add, imports_to_remove, **sort_kwargs):
     yield combine_trailing_code_chunks
     yield separate_comma_imports
-    if imports_to_add:
-        yield functools.partial(add_imports, to_add=imports_to_add)
-    if imports_to_remove:
-        yield functools.partial(remove_imports, to_remove=imports_to_remove)
+    yield functools.partial(add_imports, to_add=imports_to_add)
+    yield functools.partial(remove_imports, to_remove=imports_to_remove)
     yield remove_duplicated_imports
     yield functools.partial(apply_import_sorting, **sort_kwargs)
 
@@ -346,6 +354,32 @@ def apply_reordering(new_contents, filename):
         f.write(new_contents)
 
 
+def _add_future_options(parser):
+    prev = []
+    for py, removals in FUTURE_IMPORTS:
+        opt = '--{}-plus'.format(py)
+        futures = ', '.join(removals)
+        implies = '. implies: {}'.format(', '.join(prev)) if prev else ''
+        parser.add_argument(
+            opt, action='store_true',
+            help='Remove obsolete future imports ({}){}'.format(
+                futures, implies,
+            ),
+        )
+        prev.append(opt)
+
+
+def _future_removals(args):
+    implied = False
+    ret = []
+    for py, removals in reversed(FUTURE_IMPORTS):
+        implied |= getattr(args, '{}_plus'.format(py))
+        if implied:
+            for removal in removals:
+                ret.append('from __future__ import {}'.format(removal))
+    return ret
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', nargs='*')
@@ -359,11 +393,11 @@ def main(argv=None):
         help='Print the output of a single file after reordering.',
     )
     parser.add_argument(
-        '--add-import', action='append',
+        '--add-import', action='append', default=[],
         help='Import to add to each file.  Can be specified multiple times.',
     )
     parser.add_argument(
-        '--remove-import', action='append',
+        '--remove-import', action='append', default=[],
         help=(
             'Import to remove from each file.  '
             'Can be specified multiple times.'
@@ -380,8 +414,8 @@ def main(argv=None):
     parser.add_argument(
         '--separate-relative', action='store_true',
         help=(
-            'Put relative imports into bottom and seperate with other local '
-            'imports(absolute import) with an new line .'
+            'Separate explicit relative (`from . import ...`) imports into a '
+            'separate block.'
         ),
     )
 
@@ -393,7 +427,10 @@ def main(argv=None):
         ),
     )
 
+    _add_future_options(parser)
+
     args = parser.parse_args(argv)
+    args.remove_import.extend(_future_removals(args))
 
     retv = 0
     for filename in args.filenames:
