@@ -198,9 +198,9 @@ def add_imports(partitions, to_add=()):
 
 
 def remove_imports(partitions, to_remove=()):
-    to_remove_imports = set(
+    to_remove_imports = {
         import_obj_from_str(imp_statement) for imp_statement in to_remove
-    )
+    }
 
     def _inner():
         for partition in partitions:
@@ -253,10 +253,10 @@ def apply_import_sorting(
         for partition in imports
     ]
 
-    import_obj_to_partition = dict(
-        (import_obj_from_str(partition.src), partition)
+    import_obj_to_partition = {
+        import_obj_from_str(partition.src): partition
         for partition in imports
-    )
+    }
 
     new_imports = []
     relative_imports = []
