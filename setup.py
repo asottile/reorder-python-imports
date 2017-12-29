@@ -1,4 +1,3 @@
-from setuptools import find_packages
 from setuptools import setup
 
 setup(
@@ -18,10 +17,9 @@ setup(
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
     ],
-    packages=find_packages(exclude=('tests*', 'testing*')),
+    py_modules=['reorder_python_imports'],
     install_requires=[
         'aspy.refactor_imports>=0.5.3',
-        'cached-property',
         'six',
     ],
     entry_points={

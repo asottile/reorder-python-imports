@@ -9,16 +9,16 @@ import subprocess
 import sys
 
 import pytest
-from reorder_python_imports.main import apply_import_sorting
-from reorder_python_imports.main import CodePartition
-from reorder_python_imports.main import CodeType
-from reorder_python_imports.main import fix_file_contents
-from reorder_python_imports.main import get_line_offsets_by_line_no
-from reorder_python_imports.main import main
-from reorder_python_imports.main import partition_source
-from reorder_python_imports.main import remove_duplicated_imports
-from reorder_python_imports.main import separate_comma_imports
-from reorder_python_imports.main import TopLevelImportVisitor
+from reorder_python_imports import apply_import_sorting
+from reorder_python_imports import CodePartition
+from reorder_python_imports import CodeType
+from reorder_python_imports import fix_file_contents
+from reorder_python_imports import get_line_offsets_by_line_no
+from reorder_python_imports import main
+from reorder_python_imports import partition_source
+from reorder_python_imports import remove_duplicated_imports
+from reorder_python_imports import separate_comma_imports
+from reorder_python_imports import TopLevelImportVisitor
 
 
 def test_partition_source_trivial():
