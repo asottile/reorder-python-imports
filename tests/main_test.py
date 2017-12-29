@@ -663,3 +663,32 @@ def test_separate_relative_and_separate_from():
         '\n'
         'from . import bar\n'
     )
+
+
+@pytest.mark.parametrize(
+    ('futures', 'opt', 'expected'),
+    (
+        (
+            {'with_statement', 'unicode_literals'},
+            '--py22-plus',
+            {'with_statement', 'unicode_literals'},
+        ),
+        (
+            {'with_statement', 'unicode_literals'},
+            '--py26-plus',
+            {'unicode_literals'},
+        ),
+        (
+            {'with_statement', 'unicode_literals'},
+            '--py3-plus',
+            set()
+        ),
+    ),
+)
+def test_py_options(tmpdir, futures, opt, expected):
+    f = tmpdir.join('f.py')
+    src = 'from __future__ import {}'.format(', '.join(futures))
+    f.write(src)
+    main((str(f), opt))
+    ret = {l[len('from __future__ import '):].strip() for l in f.readlines()}
+    assert ret == expected
