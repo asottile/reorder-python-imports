@@ -169,7 +169,7 @@ def separate_comma_imports(partitions):
                 if import_obj.has_multiple_imports:
                     for new_import_obj in import_obj.split_imports():
                         yield CodePartition(
-                            CodeType.IMPORT, new_import_obj.to_text()
+                            CodeType.IMPORT, new_import_obj.to_text(),
                         )
                 else:
                     yield partition

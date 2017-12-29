@@ -25,3 +25,7 @@ repos:
     sha: v1.2.0
     hooks:
     -   id: pyupgrade
+-   repo: https://github.com/asottile/add-trailing-comma
+    sha: v0.6.4
+    hooks:
+    -   id: add-trailing-comma
