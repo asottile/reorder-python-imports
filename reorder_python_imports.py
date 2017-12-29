@@ -69,7 +69,6 @@ def partition_source(src):
     """Partitions source into a list of `CodePartition`s for import
     refactoring.
     """
-    # pylint:disable=too-many-branches,too-many-locals,too-many-statements
     if type(src) is not six.text_type:
         raise TypeError('Expected text but got `{}`'.format(type(src)))
 
@@ -170,7 +169,7 @@ def separate_comma_imports(partitions):
                 if import_obj.has_multiple_imports:
                     for new_import_obj in import_obj.split_imports():
                         yield CodePartition(
-                            CodeType.IMPORT, new_import_obj.to_text()
+                            CodeType.IMPORT, new_import_obj.to_text(),
                         )
                 else:
                     yield partition
@@ -199,9 +198,9 @@ def add_imports(partitions, to_add=()):
 
 
 def remove_imports(partitions, to_remove=()):
-    to_remove_imports = set(
+    to_remove_imports = {
         import_obj_from_str(imp_statement) for imp_statement in to_remove
-    )
+    }
 
     def _inner():
         for partition in partitions:
@@ -254,10 +253,10 @@ def apply_import_sorting(
         for partition in imports
     ]
 
-    import_obj_to_partition = dict(
-        (import_obj_from_str(partition.src), partition)
+    import_obj_to_partition = {
+        import_obj_from_str(partition.src): partition
         for partition in imports
-    )
+    }
 
     new_imports = []
     relative_imports = []

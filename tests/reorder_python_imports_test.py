@@ -66,7 +66,7 @@ def test_partition_source_indented_encoding():
 def test_partition_source_encoding_and_shebang():
     assert partition_source(
         '#!/usr/bin/env python\n'
-        '# -*- coding: UTF-8 -*-\n'
+        '# -*- coding: UTF-8 -*-\n',
     ) == [
         CodePartition(CodeType.PRE_IMPORT_CODE, '#!/usr/bin/env python\n'),
         CodePartition(CodeType.PRE_IMPORT_CODE, '# -*- coding: UTF-8 -*-\n'),
@@ -113,7 +113,7 @@ def test_partition_source_docstring_no_nl():
 def test_partition_source_multiple_docstrings():
     assert partition_source(
         '"""foo"""\n'
-        '"""bar"""\n'
+        '"""bar"""\n',
     ) == [
         # only the first docstring should count as a docstring
         CodePartition(CodeType.PRE_IMPORT_CODE, '"""foo"""\n'),
@@ -124,7 +124,7 @@ def test_partition_source_multiple_docstrings():
 def test_partition_source_unicode_docstring():
     assert partition_source(
         '# -*- coding: UTF-8 -*-\n'
-        'u"""☃☃☃"""\n'
+        'u"""☃☃☃"""\n',
     ) == [
         CodePartition(CodeType.PRE_IMPORT_CODE, '# -*- coding: UTF-8 -*-\n'),
         CodePartition(CodeType.PRE_IMPORT_CODE, 'u"""☃☃☃"""\n'),
@@ -136,7 +136,7 @@ def test_partition_source_blank_lines_with_whitespace():
         'import os\n'
         '\n'
         '    \n'
-        'import sys\n'
+        'import sys\n',
     ) == [
         CodePartition(CodeType.IMPORT, 'import os\n'),
         CodePartition(CodeType.NON_CODE, '\n'),
@@ -160,7 +160,7 @@ def test_partition_source_code_no_nl():
 def test_partition_source_comment_lines():
     assert partition_source(
         '# hello world\n'
-        'import os\n'
+        'import os\n',
     ) == [
         CodePartition(CodeType.PRE_IMPORT_CODE, '# hello world\n'),
         CodePartition(CodeType.IMPORT, 'import os\n'),
@@ -181,7 +181,7 @@ def test_import_visitor_trivial():
 def test_import_visitor_simple_import():
     ret = _src_to_import_lines(
         b'import foo\n'
-        b'#something else\n'
+        b'#something else\n',
     )
     assert ret == [1]
 
@@ -189,7 +189,7 @@ def test_import_visitor_simple_import():
 def test_import_visitor_simple_import_2():
     ret = _src_to_import_lines(
         b'# -*- coding: utf-8 -*-\n'
-        b'import os\n'
+        b'import os\n',
     )
     assert ret == [2]
 
@@ -197,7 +197,7 @@ def test_import_visitor_simple_import_2():
 def test_import_visitor_multiple_imports():
     ret = _src_to_import_lines(
         b'import os\n'
-        b'import sys\n'
+        b'import sys\n',
     )
     assert ret == [1, 2]
 
@@ -205,7 +205,7 @@ def test_import_visitor_multiple_imports():
 def test_import_visitor_ignores_indented_imports():
     ret = _src_to_import_lines(
         b'if True:\n'
-        b'    import os\n'
+        b'    import os\n',
     )
     assert ret == []
 
@@ -333,21 +333,24 @@ def test_apply_import_sorting_sorts_imports():
 
 
 def test_apply_import_sorting_sorts_imports_with_separate_relative():
-    assert apply_import_sorting([
-        # relative imports
-        CodePartition(CodeType.IMPORT, 'from .main import main\n'),
-        # local imports
-        CodePartition(
-            CodeType.IMPORT, 'from reorder_python_imports import main\n',
-        ),
-        CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
-        # site-package imports
-        CodePartition(CodeType.IMPORT, 'from six import text_type\n'),
-        CodePartition(CodeType.IMPORT, 'import aspy\n'),
-        # System imports (out of order)
-        CodePartition(CodeType.IMPORT, 'from os import path\n'),
-        CodePartition(CodeType.IMPORT, 'import os\n'),
-    ], separate_relative=True) == [
+    assert apply_import_sorting(
+        [
+            # relative imports
+            CodePartition(CodeType.IMPORT, 'from .main import main\n'),
+            # local imports
+            CodePartition(
+                CodeType.IMPORT, 'from reorder_python_imports import main\n',
+            ),
+            CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
+            # site-package imports
+            CodePartition(CodeType.IMPORT, 'from six import text_type\n'),
+            CodePartition(CodeType.IMPORT, 'import aspy\n'),
+            # System imports (out of order)
+            CodePartition(CodeType.IMPORT, 'from os import path\n'),
+            CodePartition(CodeType.IMPORT, 'import os\n'),
+        ],
+        separate_relative=True,
+    ) == [
         CodePartition(CodeType.IMPORT, 'import os\n'),
         CodePartition(CodeType.IMPORT, 'from os import path\n'),
         CodePartition(CodeType.NON_CODE, '\n'),
@@ -364,19 +367,22 @@ def test_apply_import_sorting_sorts_imports_with_separate_relative():
 
 
 def test_apply_import_sorting_sorts_imports_with_separate_from_import():
-    assert apply_import_sorting([
-        # local imports
-        CodePartition(
-            CodeType.IMPORT, 'from reorder_python_imports import main\n',
-        ),
-        CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
-        # site-package imports
-        CodePartition(CodeType.IMPORT, 'from six import text_type\n'),
-        CodePartition(CodeType.IMPORT, 'import aspy\n'),
-        # System imports (out of order)
-        CodePartition(CodeType.IMPORT, 'from os import path\n'),
-        CodePartition(CodeType.IMPORT, 'import os\n'),
-    ], separate_from_import=True) == [
+    assert apply_import_sorting(
+        [
+            # local imports
+            CodePartition(
+                CodeType.IMPORT, 'from reorder_python_imports import main\n',
+            ),
+            CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
+            # site-package imports
+            CodePartition(CodeType.IMPORT, 'from six import text_type\n'),
+            CodePartition(CodeType.IMPORT, 'import aspy\n'),
+            # System imports (out of order)
+            CodePartition(CodeType.IMPORT, 'from os import path\n'),
+            CodePartition(CodeType.IMPORT, 'import os\n'),
+        ],
+        separate_from_import=True,
+    ) == [
         CodePartition(CodeType.IMPORT, 'import os\n'),
         CodePartition(CodeType.NON_CODE, '\n'),
         CodePartition(CodeType.IMPORT, 'from os import path\n'),
@@ -564,7 +570,7 @@ def test_additional_directories_integration():
         foo_file.write(
             'import thirdparty\n'
             'import nottests\n'
-            'import nottesting\n'
+            'import nottesting\n',
         )
 
     # Without the new option
@@ -596,7 +602,7 @@ def test_separate_relative_integration():
         foo_file.write(
             'import thirdparty\n'
             'from foo import bar\n'
-            'from . import bar\n'
+            'from . import bar\n',
         )
 
     main(('foo/foo.py',))
@@ -628,7 +634,7 @@ def test_separate_from_import_integration():
             'import thirdparty\n'
             'import foo.bar\n'
             'from foo import bar\n'
-            'from . import bar\n'
+            'from . import bar\n',
         )
 
     main(('foo/foo.py',))
@@ -681,7 +687,7 @@ def test_separate_relative_and_separate_from():
         (
             {'with_statement', 'unicode_literals'},
             '--py3-plus',
-            set()
+            set(),
         ),
     ),
 )
