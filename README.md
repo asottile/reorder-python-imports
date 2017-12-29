@@ -156,3 +156,16 @@ $ cat test.py
 with open('foo.txt', 'w') as foo_f:
     foo_f.write('hello world')
 ```
+
+## Removing obsolete `__future__` imports
+
+The cli provides a few options to help "burn the bridges" with old python
+versions by removing `__future__` imports automatically.  Each option implies
+all older versions.
+
+- `--py22-plus`: `nested_scopes`
+- `--py23-plus`: `generators`
+- `--py26-plus`: `with_statement`
+- `--py3-plus`: `division`, `absolute_import`, `print_function`,
+  `unicode_literals`
+- `--py37-plus`: `generator_stop`
