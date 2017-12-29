@@ -69,7 +69,6 @@ def partition_source(src):
     """Partitions source into a list of `CodePartition`s for import
     refactoring.
     """
-    # pylint:disable=too-many-branches,too-many-locals,too-many-statements
     if type(src) is not six.text_type:
         raise TypeError('Expected text but got `{}`'.format(type(src)))
 
