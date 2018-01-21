@@ -549,7 +549,7 @@ def test_patch_multiple_files_no_eol(in_tmpdir, capsys):
     assert io.open(test2filename).read() == 'import os\nimport sys\n'
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def restore_sys_path():
     before = sys.path[:]
     yield
