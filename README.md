@@ -51,7 +51,7 @@ Hooks available:
 
 ### Separates imports into three sections
 
-```
+```python3
 import sys
 import pyramid
 import reorder_python_imports
@@ -59,7 +59,7 @@ import reorder_python_imports
 
 becomes
 
-```
+```python3
 import sys
 
 import pyramid
@@ -69,27 +69,27 @@ import reorder_python_imports
 
 ### `import` imports before `from` imports
 
-```
+```python3
 from os import path
 import sys
 ```
 
 becomes
 
-```
+```python3
 import sys
 from os import path
 ```
 
 ### Splits `from` imports (may be configurable in the future!)
 
-```
+```python3
 from os.path import abspath, exists
 ```
 
 becomes
 
-```
+```python3
 from os.path import abspath
 from os.path import exists
 ```
@@ -102,7 +102,7 @@ non-comment lines will be ignored.
 
 For instance, these will not be changed:
 
-```
+```python3
 import sys
 
 try:  # not import, not whitespace
@@ -112,7 +112,7 @@ except ImportError:
 ```
 
 
-```
+```python3
 import sys
 
 import reorder_python_imports
@@ -122,7 +122,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 ```
 
-```
+```python3
 # noreorder
 import sys
 import pyramid
