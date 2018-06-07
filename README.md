@@ -51,7 +51,7 @@ Hooks available:
 
 ### Separates imports into three sections
 
-```
+```python
 import sys
 import pyramid
 import reorder_python_imports
@@ -59,7 +59,7 @@ import reorder_python_imports
 
 becomes
 
-```
+```python
 import sys
 
 import pyramid
@@ -69,27 +69,27 @@ import reorder_python_imports
 
 ### `import` imports before `from` imports
 
-```
+```python
 from os import path
 import sys
 ```
 
 becomes
 
-```
+```python
 import sys
 from os import path
 ```
 
 ### Splits `from` imports (may be configurable in the future!)
 
-```
+```python
 from os.path import abspath, exists
 ```
 
 becomes
 
-```
+```python
 from os.path import abspath
 from os.path import exists
 ```
@@ -102,7 +102,7 @@ non-comment lines will be ignored.
 
 For instance, these will not be changed:
 
-```
+```python
 import sys
 
 try:  # not import, not whitespace
@@ -112,7 +112,7 @@ except ImportError:
 ```
 
 
-```
+```python
 import sys
 
 import reorder_python_imports
@@ -122,7 +122,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 ```
 
-```
+```python
 # noreorder
 import sys
 import pyramid
@@ -133,7 +133,7 @@ import reorder_python_imports
 
 Let's say I want to enforce `absolute_import` across my codebase.  I can use: `--add-import 'from __future__ import absolute_import'`.
 
-```
+```console
 $ cat test.py
 print('Hello world')
 $ reorder-python-imports --add-import 'from __future__ import absolute_import' test.py
@@ -145,7 +145,7 @@ print('Hello world')
 
 Let's say I no longer care about supporting Python 2.5, I can remove `from __future__ import with_statement` with `--remove-import 'from __future__ import with_statement'`
 
-```
+```console
 $ cat test.py
 from __future__ import with_statement
 with open('foo.txt', 'w') as foo_f:
