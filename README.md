@@ -129,6 +129,37 @@ import pyramid
 import reorder_python_imports
 ```
 
+## why this style?
+
+The style chosen by `reorder-python-imports` has a single aim: reduce merge
+conflicts.
+
+By having a single import per line, multiple contributors can
+add / remove imports from a single module without resulting in a conflict.
+
+Consider the following example which causes a merge conflict:
+
+```diff
+# developer 1
+-from typing import Dict, List
++from typing import Any, Dict, List
+```
+
+```diff
+# developer 2
+-from typing import Dict, List
++from typing import Dict, List, Tuple
+```
+
+no conflict with the style enforced by `reorder-python-imports`:
+
+```diff
++from typing import Any
+ from typing import Dict
+ from typing import List
++from typing import Tuple
+```
+
 ## Adding / Removing Imports
 
 Let's say I want to enforce `absolute_import` across my codebase.  I can use: `--add-import 'from __future__ import absolute_import'`.
