@@ -21,6 +21,12 @@ from reorder_python_imports import separate_comma_imports
 from reorder_python_imports import TopLevelImportVisitor
 
 
+@pytest.fixture
+def in_tmpdir(tmpdir):
+    with tmpdir.as_cwd():
+        yield tmpdir
+
+
 def test_partition_source_trivial():
     assert partition_source('') == []
 
@@ -477,30 +483,33 @@ tfiles = pytest.mark.parametrize('filename', os.listdir('test_data/inputs'))
 
 @tfiles
 def test_fix_file_contents(filename):
-    input_contents = io.open(os.path.join('test_data/inputs', filename)).read()
-    expected = io.open(os.path.join('test_data/outputs', filename)).read()
+    with io.open(os.path.join('test_data/inputs', filename)) as f:
+        input_contents = f.read()
+    with io.open(os.path.join('test_data/outputs', filename)) as f:
+        expected = f.read()
     assert fix_file_contents(input_contents) == expected
 
 
 @tfiles
 def test_integration_main(filename, tmpdir):
-    input_contents = io.open(os.path.join('test_data/inputs', filename)).read()
-    expected = io.open(os.path.join('test_data/outputs', filename)).read()
+    with io.open(os.path.join('test_data/inputs', filename)) as f:
+        input_contents = f.read()
+    with io.open(os.path.join('test_data/outputs', filename)) as f:
+        expected = f.read()
 
-    test_file_path = tmpdir.join('test.py').strpath
-    with io.open(test_file_path, 'w') as f:
-        f.write(input_contents)
+    test_file = tmpdir.join('test.py')
+    test_file.write(input_contents)
 
     # Check return value with --diff-only
-    retv_diff = main((test_file_path, '--diff-only'))
+    retv_diff = main((str(test_file), '--diff-only'))
     assert retv_diff == int(input_contents != expected)
 
-    retv = main((test_file_path,))
+    retv = main((str(test_file),))
     # Check return value
     assert retv == int(input_contents != expected)
 
     # Check the contents rewritten
-    assert io.open(test_file_path).read() == expected
+    assert test_file.read() == expected
 
 
 def test_integration_main_stdout(capsys):
@@ -518,35 +527,30 @@ def _apply_patch(patch):
 
 
 def test_does_not_reorder_with_diff_only(in_tmpdir, capsys):
-    test_file_path = in_tmpdir.join('test.py').strpath
-    original_contents = 'import sys\nimport os\n'
-    with io.open(test_file_path, 'w') as test_file:
-        test_file.write(original_contents)
+    test_file = in_tmpdir.join('test.py')
+    test_file.write('import sys\nimport os\n')
 
-    retv = main((test_file_path, '--diff-only'))
+    retv = main((str(test_file), '--diff-only'))
     assert retv == 1
-    assert io.open(test_file_path).read() == original_contents
+    assert test_file.read() == 'import sys\nimport os\n'
     patch, _ = capsys.readouterr()
     _apply_patch(patch)
-    assert io.open(test_file_path).read() == 'import os\nimport sys\n'
+    assert test_file.read() == 'import os\nimport sys\n'
 
 
 def test_patch_multiple_files_no_eol(in_tmpdir, capsys):
-    test1filename = in_tmpdir.join('test1.py').strpath
-    test2filename = in_tmpdir.join('test2.py').strpath
-    with io.open(test1filename, 'w') as test1:
-        # Intentionally no EOL
-        test1.write('import sys\nimport os')
+    test1file = in_tmpdir.join('test1.py')
+    test2file = in_tmpdir.join('test2.py')
+    # Intentionally no EOL
+    test1file.write('import sys\nimport os')
+    test2file.write('import sys\nimport os\n')
 
-    with io.open(test2filename, 'w') as test2:
-        test2.write('import sys\nimport os\n')
-
-    ret = main((test1filename, test2filename, '--diff-only'))
+    ret = main((str(test1file), str(test2file), '--diff-only'))
     assert ret == 1
     patch, _ = capsys.readouterr()
     _apply_patch(patch)
-    assert io.open(test1filename).read() == 'import os\nimport sys\n'
-    assert io.open(test2filename).read() == 'import os\nimport sys\n'
+    assert test1file.read() == 'import os\nimport sys\n'
+    assert test2file.read() == 'import os\nimport sys\n'
 
 
 @pytest.fixture
@@ -556,26 +560,24 @@ def restore_sys_path():
     sys.path[:] = before
 
 
-@pytest.mark.usefixtures('in_tmpdir', 'restore_sys_path')
-def test_additional_directories_integration():
+@pytest.mark.usefixtures('restore_sys_path')
+def test_additional_directories_integration(in_tmpdir):
     if '' in sys.path:  # pragma: no cover (depends on run environment)
         sys.path.remove('')
 
     # Intentionally avoiding 'tests' and 'testing' because those would clash
     # with the names of this project
-    os.makedirs('nottests/nottesting')
-    io.open('nottests/nottesting/__init__.py', 'w').close()
+    in_tmpdir.join('nottests/nottesting/__init__.py').ensure()
 
-    with io.open('foo.py', 'w') as foo_file:
-        foo_file.write(
-            'import thirdparty\n'
-            'import nottests\n'
-            'import nottesting\n',
-        )
+    in_tmpdir.join('foo.py').write(
+        'import thirdparty\n'
+        'import nottests\n'
+        'import nottesting\n',
+    )
 
     # Without the new option
     main(('foo.py',))
-    assert io.open('foo.py').read() == (
+    assert in_tmpdir.join('foo.py').read() == (
         'import nottesting\n'
         'import thirdparty\n'
         '\n'
@@ -584,7 +586,7 @@ def test_additional_directories_integration():
 
     # With the new option
     main(('foo.py', '--application-directories', '.:nottests'))
-    assert io.open('foo.py').read() == (
+    assert in_tmpdir.join('foo.py').read() == (
         'import thirdparty\n'
         '\n'
         'import nottesting\n'
@@ -592,21 +594,18 @@ def test_additional_directories_integration():
     )
 
 
-@pytest.mark.usefixtures('in_tmpdir')
-def test_separate_relative_integration():
-    os.makedirs('foo/bar')
-    io.open('foo/__init__.py', 'w').close()
-    io.open('foo/bar/__init__.py', 'w').close()
+def test_separate_relative_integration(in_tmpdir):
+    in_tmpdir.join('foo/__init__.py').ensure()
+    in_tmpdir.join('foo/bar/__init__.py').ensure()
 
-    with io.open('foo/foo.py', 'w') as foo_file:
-        foo_file.write(
-            'import thirdparty\n'
-            'from foo import bar\n'
-            'from . import bar\n',
-        )
+    in_tmpdir.join('foo/foo.py').write(
+        'import thirdparty\n'
+        'from foo import bar\n'
+        'from . import bar\n',
+    )
 
     main(('foo/foo.py',))
-    assert io.open('foo/foo.py').read() == (
+    assert in_tmpdir.join('foo/foo.py').read() == (
         'import thirdparty\n'
         '\n'
         'from . import bar\n'
@@ -614,7 +613,7 @@ def test_separate_relative_integration():
     )
 
     main(('foo/foo.py', '--separate-relative'))
-    assert io.open('foo/foo.py').read() == (
+    assert in_tmpdir.join('foo/foo.py').read() == (
         'import thirdparty\n'
         '\n'
         'from foo import bar\n'
@@ -623,22 +622,19 @@ def test_separate_relative_integration():
     )
 
 
-@pytest.mark.usefixtures('in_tmpdir')
-def test_separate_from_import_integration():
-    os.makedirs('foo/bar')
-    io.open('foo/__init__.py', 'w').close()
-    io.open('foo/bar/__init__.py', 'w').close()
+def test_separate_from_import_integration(in_tmpdir):
+    in_tmpdir.join('foo/__init__.py').ensure()
+    in_tmpdir.join('foo/bar/__init__.py').ensure()
 
-    with io.open('foo/foo.py', 'w') as foo_file:
-        foo_file.write(
-            'import thirdparty\n'
-            'import foo.bar\n'
-            'from foo import bar\n'
-            'from . import bar\n',
-        )
+    in_tmpdir.join('foo/foo.py').write(
+        'import thirdparty\n'
+        'import foo.bar\n'
+        'from foo import bar\n'
+        'from . import bar\n',
+    )
 
     main(('foo/foo.py',))
-    assert io.open('foo/foo.py').read() == (
+    assert in_tmpdir.join('foo/foo.py').read() == (
         'import thirdparty\n'
         '\n'
         'import foo.bar\n'
@@ -647,7 +643,7 @@ def test_separate_from_import_integration():
     )
 
     main(('foo/foo.py', '--separate-from-import'))
-    assert io.open('foo/foo.py').read() == (
+    assert in_tmpdir.join('foo/foo.py').read() == (
         'import thirdparty\n'
         '\n'
         'import foo.bar\n'
