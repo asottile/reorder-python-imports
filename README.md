@@ -43,9 +43,14 @@ optional arguments:
 
 See [pre-commit](https://github.com/pre-commit/pre-commit) for instructions
 
-Hooks available:
-- `reorder-python-imports` - This hook reorders imports in python files.
+Sample `.pre-commit-config.yaml
 
+```yaml
+-   repo: https://github.com/asottile/reorder_python_imports
+    rev: v1.1.0
+    hooks:
+    -   id: reorder-python-imports
+```
 
 ## What does it do?
 
