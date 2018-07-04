@@ -186,10 +186,7 @@ def add_imports(partitions, to_add=()):
 
     # If we don't have a trailing newline, this refactor is wrong
     if not partitions[-1].src.endswith('\n'):
-        partitions[-1] = CodePartition(
-            partitions[-1].code_type,
-            partitions[-1].src + '\n',
-        )
+        partitions[-1] = partitions[-1]._replace(src=partitions[-1].src + '\n')
 
     return partitions + [
         CodePartition(CodeType.IMPORT, imp_statement.strip() + '\n')
@@ -198,9 +195,9 @@ def add_imports(partitions, to_add=()):
 
 
 def remove_imports(partitions, to_remove=()):
-    to_remove_imports = {
-        import_obj_from_str(imp_statement) for imp_statement in to_remove
-    }
+    to_remove_imports = set()
+    for s in to_remove:
+        to_remove_imports.update(import_obj_from_str(s).split_imports())
 
     def _inner():
         for partition in partitions:
@@ -308,9 +305,7 @@ def apply_import_sorting(
     restsrc = _partitions_to_src(rest)
     restsrc = restsrc.rstrip()
     if restsrc:
-        rest = [
-            CodePartition(CodeType.CODE, restsrc + '\n'),
-        ]
+        rest = [CodePartition(CodeType.CODE, restsrc + '\n')]
     else:
         rest = []
 
@@ -319,8 +314,8 @@ def apply_import_sorting(
 
 def _get_steps(imports_to_add, imports_to_remove, **sort_kwargs):
     yield combine_trailing_code_chunks
-    yield separate_comma_imports
     yield functools.partial(add_imports, to_add=imports_to_add)
+    yield separate_comma_imports
     yield functools.partial(remove_imports, to_remove=imports_to_remove)
     yield remove_duplicated_imports
     yield functools.partial(apply_import_sorting, **sort_kwargs)
@@ -370,13 +365,22 @@ def _add_future_options(parser):
 
 def _future_removals(args):
     implied = False
-    ret = []
+    to_remove = []
     for py, removals in reversed(FUTURE_IMPORTS):
         implied |= getattr(args, '{}_plus'.format(py))
         if implied:
-            for removal in removals:
-                ret.append('from __future__ import {}'.format(removal))
-    return ret
+            to_remove.extend(removals)
+    if to_remove:
+        yield 'from __future__ import {}'.format(', '.join(to_remove))
+
+
+def _validate_import(s):
+    try:
+        import_obj_from_str(s)
+    except (SyntaxError, KeyError):
+        raise argparse.ArgumentTypeError('expected import: {!r}'.format(s))
+    else:
+        return s
 
 
 def main(argv=None):
@@ -392,11 +396,11 @@ def main(argv=None):
         help='Print the output of a single file after reordering.',
     )
     parser.add_argument(
-        '--add-import', action='append', default=[],
+        '--add-import', action='append', default=[], type=_validate_import,
         help='Import to add to each file.  Can be specified multiple times.',
     )
     parser.add_argument(
-        '--remove-import', action='append', default=[],
+        '--remove-import', action='append', default=[], type=_validate_import,
         help=(
             'Import to remove from each file.  '
             'Can be specified multiple times.'
@@ -422,7 +426,7 @@ def main(argv=None):
         '--separate-from-import', action='store_true',
         help=(
             'Seperate `from xx import xx` imports from `import xx` imports'
-            ' with an new line .'
+            ' with a new line .'
         ),
     )
 

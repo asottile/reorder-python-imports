@@ -694,3 +694,30 @@ def test_py_options(tmpdir, futures, opt, expected):
     main((str(f), opt))
     ret = {l[len('from __future__ import '):].strip() for l in f.readlines()}
     assert ret == expected
+
+
+@pytest.mark.parametrize('opt', ('--add-import', '--remove-import'))
+@pytest.mark.parametrize('s', ('syntax error', '"import os"'))
+def test_invalid_add_remove_syntaxes(tmpdir, capsys, opt, s):
+    f = tmpdir.join('f.py')
+    f.write('import os\n')
+    with pytest.raises(SystemExit) as excinfo:
+        main((str(f), opt, s))
+    retc, = excinfo.value.args
+    assert retc
+    out = ''.join(capsys.readouterr())
+    assert '{}: expected import: {!r}'.format(opt, s) in out
+
+
+def test_can_add_multiple_imports_at_once(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('import argparse')
+    assert main((str(f), '--add-import', 'import os, sys'))
+    assert f.read() == 'import argparse\nimport os\nimport sys\n'
+
+
+def test_can_remove_multiple_at_once(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('import argparse\nimport os\nimport sys\n')
+    assert main((str(f), '--remove-import', 'import os, sys'))
+    assert f.read() == 'import argparse\n'
