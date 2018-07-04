@@ -43,7 +43,7 @@ optional arguments:
 
 See [pre-commit](https://github.com/pre-commit/pre-commit) for instructions
 
-Sample `.pre-commit-config.yaml
+Sample `.pre-commit-config.yaml`
 
 ```yaml
 -   repo: https://github.com/asottile/reorder_python_imports
