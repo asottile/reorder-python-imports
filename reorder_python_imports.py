@@ -11,7 +11,6 @@ import io
 import sys
 import tokenize
 
-import six
 from aspy.refactor_imports.import_obj import import_obj_from_str
 from aspy.refactor_imports.sort import sort
 
@@ -69,14 +68,8 @@ def partition_source(src):
     """Partitions source into a list of `CodePartition`s for import
     refactoring.
     """
-    if type(src) is not six.text_type:
-        raise TypeError('Expected text but got `{}`'.format(type(src)))
-
     # In python2, ast.parse(text_string_with_encoding_pragma) raises
     # SyntaxError: encoding declaration in Unicode string
-    # We'll encode arbitrarily to UTF-8, though it's incorrect in some cases
-    # for things like strings and comments, we're really only looking for the
-    # start token for imports, which are ascii.
     ast_obj = ast.parse(src.encode('UTF-8'))
     visitor = TopLevelImportVisitor()
     visitor.visit(ast_obj)
