@@ -721,3 +721,13 @@ def test_can_remove_multiple_at_once(tmpdir):
     f.write('import argparse\nimport os\nimport sys\n')
     assert main((str(f), '--remove-import', 'import os, sys'))
     assert f.read() == 'import argparse\n'
+
+
+def test_unreadable_files_print_filename(tmpdir, capsys):
+    f = tmpdir.join('f.py')
+    f.write_binary(b'\x98\xef\x12...')
+    filename = str(f)
+    with pytest.raises(UnicodeDecodeError):
+        main([filename])
+    _, err = capsys.readouterr()
+    assert filename in err

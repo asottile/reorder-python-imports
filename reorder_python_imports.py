@@ -437,7 +437,15 @@ def main(argv=None):
 
     retv = 0
     for filename in args.filenames:
-        contents = io.open(filename).read()
+        try:
+            contents = io.open(filename, encoding='UTF-8').read()
+        except UnicodeDecodeError:
+            print(
+                '{} is non-utf-8 (not supported)'.format(filename),
+                file=sys.stderr,
+            )
+            raise
+
         new_contents = fix_file_contents(
             contents,
             imports_to_add=args.add_import,
