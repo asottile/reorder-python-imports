@@ -344,8 +344,8 @@ def report_diff(contents, new_contents, filename):
 
 def apply_reordering(new_contents, filename):
     print('Reordering imports in {}'.format(filename))
-    with io.open(filename, 'w') as f:
-        f.write(new_contents)
+    with open(filename, 'wb') as f:
+        f.write(new_contents.encode('UTF-8'))
 
 
 def _add_future_options(parser):
@@ -437,8 +437,10 @@ def main(argv=None):
 
     retv = 0
     for filename in args.filenames:
+        with open(filename, 'rb') as f:
+            contents_bytes = f.read()
         try:
-            contents = io.open(filename, encoding='UTF-8').read()
+            contents = contents_bytes.decode('UTF-8')
         except UnicodeDecodeError:
             print(
                 '{} is non-utf-8 (not supported)'.format(filename),
