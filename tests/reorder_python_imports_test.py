@@ -32,7 +32,7 @@ def test_partition_source_trivial():
 
 
 def test_partition_source_errors_with_bytes():
-    with pytest.raises(TypeError):
+    with pytest.raises((AttributeError, TypeError)):
         partition_source(b'')
 
 

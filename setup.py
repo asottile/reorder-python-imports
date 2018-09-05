@@ -18,10 +18,7 @@ setup(
         'Programming Language :: Python :: Implementation :: PyPy',
     ],
     py_modules=['reorder_python_imports'],
-    install_requires=[
-        'aspy.refactor_imports>=0.5.3',
-        'six',
-    ],
+    install_requires=['aspy.refactor_imports>=0.5.3'],
     entry_points={
         'console_scripts': [
             'reorder-python-imports = reorder_python_imports:main',
