@@ -47,7 +47,7 @@ Sample `.pre-commit-config.yaml`
 
 ```yaml
 -   repo: https://github.com/asottile/reorder_python_imports
-    rev: v1.1.0
+    rev: v1.1.1
     hooks:
     -   id: reorder-python-imports
 ```
