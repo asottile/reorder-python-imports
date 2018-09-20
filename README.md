@@ -99,7 +99,23 @@ from os.path import abspath
 from os.path import exists
 ```
 
-### Using `# noreorder`
+### Removes duplicate imports
+
+```python
+import os
+import os.path
+import sys
+import sys
+```
+
+becomes
+
+```python
+import os.path
+import sys
+```
+
+## Using `# noreorder`
 
 Lines containing and after lines which contain a `# noreorder` comment will
 be ignored.  Additionally any imports that appear after non-whitespace
