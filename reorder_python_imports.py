@@ -12,6 +12,7 @@ import sys
 import tokenize
 
 from aspy.refactor_imports.import_obj import import_obj_from_str
+from aspy.refactor_imports.import_obj import ImportImport
 from aspy.refactor_imports.sort import sort
 
 
@@ -203,18 +204,45 @@ def remove_imports(partitions, to_remove=()):
     return list(_inner())
 
 
+def _module_to_base_modules(s):
+    """return all module names that would be imported due to this
+    import-import
+    """
+    parts = s.split('.')
+    for i in range(1, len(parts)):
+        yield '.'.join(parts[:i])
+
+
 def remove_duplicated_imports(partitions):
-    def _inner():
-        seen = set()
-        for partition in partitions:
-            if partition.code_type is CodeType.IMPORT:
-                import_obj = import_obj_from_str(partition.src)
-                if import_obj not in seen:
-                    seen.add(import_obj)
-                    yield partition
-            else:
-                yield partition
-    return list(_inner())
+    seen = set()
+    seen_module_names = set()
+    without_exact_duplicates = []
+
+    for partition in partitions:
+        if partition.code_type is CodeType.IMPORT:
+            import_obj = import_obj_from_str(partition.src)
+            if import_obj not in seen:
+                seen.add(import_obj)
+                if isinstance(import_obj, ImportImport):
+                    seen_module_names.update(_module_to_base_modules(
+                        import_obj.import_statement.module,
+                    ))
+                without_exact_duplicates.append(partition)
+        else:
+            without_exact_duplicates.append(partition)
+
+    partitions = []
+    for partition in without_exact_duplicates:
+        if partition.code_type is CodeType.IMPORT:
+            import_obj = import_obj_from_str(partition.src)
+            if (
+                    isinstance(import_obj, ImportImport) and
+                    import_obj.import_statement.module in seen_module_names
+            ):
+                continue
+        partitions.append(partition)
+
+    return partitions
 
 
 def apply_import_sorting(

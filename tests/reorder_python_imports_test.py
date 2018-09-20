@@ -296,6 +296,21 @@ def test_remove_duplicated_imports_removes_duplicated():
     ]
 
 
+def test_remove_duplicate_redundant_import_imports():
+    assert remove_duplicated_imports([
+        CodePartition(CodeType.IMPORT, 'import os\n'),
+        CodePartition(CodeType.IMPORT, 'import os.path\n'),
+    ]) == [
+        CodePartition(CodeType.IMPORT, 'import os.path\n'),
+    ]
+    assert remove_duplicated_imports([
+        CodePartition(CodeType.IMPORT, 'import os.path\n'),
+        CodePartition(CodeType.IMPORT, 'import os\n'),
+    ]) == [
+        CodePartition(CodeType.IMPORT, 'import os.path\n'),
+    ]
+
+
 def test_apply_import_sorting_trivial():
     assert apply_import_sorting([]) == []
 
