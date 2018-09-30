@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+import os.path
+import sys
+
+import six
+
+
+def main():
+    assert six.PY3, 'This must be run in python 3'
+
+    removes = []
+    renames = []
+    for move in six._moved_attributes:
+        if isinstance(move, six.MovedAttribute):
+            if move.name != move.attr:
+                continue
+
+            if move.mod == 'builtins':
+                removes.append('from six.moves import {}'.format(move.name))
+            else:
+                renames.append('six.moves={}:{}'.format(move.mod, move.name))
+        elif isinstance(move, six.MovedModule):
+            if 'six.moves.{}'.format(move.name) == move.mod:
+                renames.append('six.moves.{}={}'.format(move.name, move.name))
+            else:
+                renames.append('six.moves.{}={}'.format(move.name, move.mod))
+        else:
+            raise NotImplementedError(type(move))
+
+    print(
+        '# GENERATED VIA {}\n'
+        '# Using six=={}\n'
+        'SIX_REMOVALS = [\n{}]\n'
+        'SIX_RENAMES = [\n{}]\n'
+        '# END GENERATED\n'.format(
+            os.path.basename(sys.argv[0]),
+            six.__version__,
+            ''.join('    {!r},\n'.format(r) for r in removes),
+            ''.join('    {!r},\n'.format(r) for r in renames),
+        ),
+    )
+
+
+if __name__ == '__main__':
+    exit(main())
