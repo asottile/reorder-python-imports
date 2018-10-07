@@ -27,6 +27,15 @@ def main():
         else:
             raise NotImplementedError(type(move))
 
+    # six.moves.urllib imports urllb.* which doesn't happen with
+    # `import urllib`
+    urllib_index = renames.index('six.moves.urllib=urllib')
+    renames[urllib_index:urllib_index + 1] = [
+        # but imports from submodules are fine
+        'six.moves.urllib.{0}=urllib.{0}'.format(submod)
+        for submod in ('error', 'parse', 'request', 'response', 'robotparser')
+    ]
+
     print(
         '# GENERATED VIA {}\n'
         '# Using six=={}\n'

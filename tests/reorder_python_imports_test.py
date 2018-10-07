@@ -808,6 +808,13 @@ def test_py3_plus_unsixes_moved_attributes(tmpdir):
     assert f.read() == 'from functools import reduce\n'
 
 
+def test_py3_plus_does_not_unsix_moves_urllib(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from six.moves import urllib\n')
+    assert not main((str(f), '--py3-plus'))
+    assert f.read() == 'from six.moves import urllib\n'
+
+
 @pytest.mark.parametrize('opt', ('--add-import', '--remove-import'))
 @pytest.mark.parametrize('s', ('syntax error', '"import os"'))
 def test_invalid_add_remove_syntaxes(tmpdir, capsys, opt, s):
