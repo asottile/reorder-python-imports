@@ -553,6 +553,22 @@ def test_replace_imports_specific_attribute_name():
     )
 
 
+def test_replace_module_imported():
+    ret = fix_file_contents(
+        'from six.moves import queue\n',
+        imports_to_replace=[(['six', 'moves', 'queue'], ['queue'], '')],
+    )
+    assert ret == 'import queue\n'
+
+
+def test_replace_module_imported_asname():
+    ret = fix_file_contents(
+        'from six.moves import queue as Queue\n',
+        imports_to_replace=[(['six', 'moves', 'queue'], ['queue'], '')],
+    )
+    assert ret == 'import queue as Queue\n'
+
+
 tfiles = pytest.mark.parametrize('filename', os.listdir('test_data/inputs'))
 
 

@@ -238,10 +238,12 @@ from `six`.  Rewrites follow the same rules as
 For example:
 
 ```diff
++import queue
 +from io import StringIO
 +from urllib.parse import quote_plus
 +
  import six.moves.urllib.parse
+-from six.moves import queue
 -from six.moves import range
 -from six.moves import StringIO
 -from six.moves.urllib.parse import quote_plus

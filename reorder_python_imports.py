@@ -221,6 +221,7 @@ def replace_imports(partitions, to_replace=()):
 
                 mod_parts = import_obj.import_statement.module.split('.')
                 symbol = import_obj.import_statement.symbol
+                asname = import_obj.import_statement.asname
 
                 for orig_mod, new_mod, attr in to_replace:
                     if (
@@ -230,6 +231,17 @@ def replace_imports(partitions, to_replace=()):
                         mod_parts[:len(orig_mod)] = new_mod
                         import_obj.ast_obj.module = '.'.join(mod_parts)
                         new_src = import_obj.to_text()
+                        yield partition._replace(src=new_src)
+                        break
+                    # from x.y import z => import z
+                    elif (
+                            not attr and
+                            mod_parts + [symbol] == orig_mod and
+                            len(new_mod) == 1
+                    ):
+                        mod_name, = new_mod
+                        asname_src = ' as {}'.format(asname) if asname else ''
+                        new_src = 'import {}{}\n'.format(mod_name, asname_src)
                         yield partition._replace(src=new_src)
                         break
                 else:
