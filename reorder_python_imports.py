@@ -25,17 +25,6 @@ class CodeType(object):
 
 CodePartition = collections.namedtuple('CodePartition', ('code_type', 'src'))
 
-FUTURE_IMPORTS = (
-    ('py22', ('nested_scopes',)),
-    ('py23', ('generators',)),
-    ('py26', ('with_statement',)),
-    (
-        'py3',
-        ('division', 'absolute_import', 'print_function', 'unicode_literals'),
-    ),
-    ('py37', ('generator_stop',)),
-)
-
 TERMINATES_COMMENT = frozenset((tokenize.NL, tokenize.ENDMARKER))
 TERMINATES_DOCSTRING = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
 TERMINATES_IMPORT = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
@@ -429,6 +418,18 @@ def apply_reordering(new_contents, filename):
     print('Reordering imports in {}'.format(filename))
     with open(filename, 'wb') as f:
         f.write(new_contents.encode('UTF-8'))
+
+
+FUTURE_IMPORTS = (
+    ('py22', ('nested_scopes',)),
+    ('py23', ('generators',)),
+    ('py26', ('with_statement',)),
+    (
+        'py3',
+        ('division', 'absolute_import', 'print_function', 'unicode_literals'),
+    ),
+    ('py37', ('generator_stop',)),
+)
 
 
 def _add_future_options(parser):
