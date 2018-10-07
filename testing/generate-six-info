@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+import os.path
+import sys
+
+import six
+
+
+def main():
+    assert six.PY3, 'This must be run in python 3'
+
+    removes = []
+    renames = []
+    for move in six._moved_attributes:
+        if isinstance(move, six.MovedAttribute):
+            if move.name != move.attr:
+                continue
+
+            if move.mod == 'builtins':
+                removes.append('from six.moves import {}'.format(move.name))
+            else:
+                renames.append('six.moves={}:{}'.format(move.mod, move.name))
+        elif isinstance(move, six.MovedModule):
+            if 'six.moves.{}'.format(move.name) == move.mod:
+                renames.append('six.moves.{}={}'.format(move.name, move.name))
+            else:
+                renames.append('six.moves.{}={}'.format(move.name, move.mod))
+        else:
+            raise NotImplementedError(type(move))
+
+    # six.moves.urllib imports urllb.* which doesn't happen with
+    # `import urllib`
+    urllib_index = renames.index('six.moves.urllib=urllib')
+    renames[urllib_index:urllib_index + 1] = [
+        # but imports from submodules are fine
+        'six.moves.urllib.{0}=urllib.{0}'.format(submod)
+        for submod in ('error', 'parse', 'request', 'response', 'robotparser')
+    ]
+
+    # not in six.moves for some reason
+    renames.extend(('six=io:StringIO', 'six=io:BytesIO'))
+
+    print(
+        '# GENERATED VIA {}\n'
+        '# Using six=={}\n'
+        'SIX_REMOVALS = [\n{}]\n'
+        'SIX_RENAMES = [\n{}]\n'
+        '# END GENERATED\n'.format(
+            os.path.basename(sys.argv[0]),
+            six.__version__,
+            ''.join('    {!r},\n'.format(r) for r in sorted(removes)),
+            ''.join('    {!r},\n'.format(r) for r in sorted(renames)),
+        ),
+    )
+
+
+if __name__ == '__main__':
+    exit(main())

@@ -15,29 +15,9 @@ uses static analysis more.
 
 ## Console scripts
 
-```
-reorder-python-imports --help
-usage: reorder-python-imports [-h] [--diff-only] [--add-import ADD_IMPORT]
-                              [--remove-import REMOVE_IMPORT]
-                              [--application-directories APPLICATION_DIRECTORIES]
-                              [filenames [filenames ...]]
+Consult `reorder-python-imports --help` for the full set of options.
 
-positional arguments:
-  filenames
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --diff-only           Show unified diff instead of applying reordering.
-  --add-import ADD_IMPORT
-                        Import to add to each file. Can be specified multiple
-                        times.
-  --remove-import REMOVE_IMPORT
-                        Import to remove from each file. Can be specified
-                        multiple times.
-  --application-directories APPLICATION_DIRECTORIES
-                        Colon separated directories that are considered top-
-                        level application directories. Defaults to `.`
-```
+`reorder-python-imports` takes filenames as positional arguments
 
 ## As a pre-commit hook
 
@@ -183,7 +163,8 @@ no conflict with the style enforced by `reorder-python-imports`:
 
 ## Adding / Removing Imports
 
-Let's say I want to enforce `absolute_import` across my codebase.  I can use: `--add-import 'from __future__ import absolute_import'`.
+Let's say I want to enforce `absolute_import` across my codebase.  I can use:
+`--add-import 'from __future__ import absolute_import'`.
 
 ```console
 $ cat test.py
@@ -195,7 +176,9 @@ from __future__ import absolute_import
 print('Hello world')
 ```
 
-Let's say I no longer care about supporting Python 2.5, I can remove `from __future__ import with_statement` with `--remove-import 'from __future__ import with_statement'`
+Let's say I no longer care about supporting Python 2.5, I can remove
+`from __future__ import with_statement` with
+`--remove-import 'from __future__ import with_statement'`
 
 ```console
 $ cat test.py
@@ -207,6 +190,30 @@ Reordering imports in test.py
 $ cat test.py
 with open('foo.txt', 'w') as foo_f:
     foo_f.write('hello world')
+```
+
+## Replacing imports
+
+Imports can be replaced with others automatically (if they provide the same
+names).  This can be useful for factoring out compatibility libraries such
+as `six` (see below for automated `six` rewriting).
+
+This rewrite avoids `NameError`s as such it only occurs when:
+
+- the imported symbol is the same before and after
+- the import is a `from` import
+
+The argument is specified as `orig.mod=new.mod` or with an optional
+checked attribute `orig.mod=new.mod:attr`.  The checked attribute is useful
+for renaming some imports from a module instead of a full module.
+
+For example:
+
+```bash
+# full module move
+--replace-import six.moves.queue=queue
+# specific attribute move
+--replace-import six.moves=io:StringIO
 ```
 
 ## Removing obsolete `__future__` imports
@@ -221,3 +228,23 @@ all older versions.
 - `--py3-plus`: `division`, `absolute_import`, `print_function`,
   `unicode_literals`
 - `--py37-plus`: `generator_stop`
+
+## Removing / rewriting obsolete `six` imports
+
+With `--py3-plus`, `reorder-python-imports` will also remove / rewrite imports
+from `six`.  Rewrites follow the same rules as
+[replacing imports](#replacing-imports) above.
+
+For example:
+
+```diff
++import queue
++from io import StringIO
++from urllib.parse import quote_plus
++
+ import six.moves.urllib.parse
+-from six.moves import queue
+-from six.moves import range
+-from six.moves import StringIO
+-from six.moves.urllib.parse import quote_plus
+```

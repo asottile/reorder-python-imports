@@ -9,6 +9,7 @@ import subprocess
 import sys
 
 import pytest
+from reorder_python_imports import _mod_startswith
 from reorder_python_imports import apply_import_sorting
 from reorder_python_imports import CodePartition
 from reorder_python_imports import CodeType
@@ -493,6 +494,81 @@ def test_remove_imports_actually_removes():
     ) == 'import os\n'
 
 
+@pytest.mark.parametrize(
+    ('s', 'prefix', 'expected'),
+    (
+        (['foo'], ['bar'], False),
+        (['foo'], ['foo'], True),
+        (['foo', 'bar'], ['foo'], True),
+        (['foo_mod'], ['foo'], False),
+    ),
+)
+def test_mod_startswith(s, prefix, expected):
+    assert _mod_startswith(s, prefix) is expected
+
+
+def test_replace_imports_noop():
+    ret = fix_file_contents(
+        'import os\n'
+        'import sys\n',
+        # import imports are not rewritten
+        imports_to_replace=[(['os'], ['fail'], '')],
+    )
+    assert ret == 'import os\nimport sys\n'
+
+
+def test_replace_imports_basic_from():
+    ret = fix_file_contents(
+        'from foo import bar\n',
+        imports_to_replace=[(['foo'], ['baz'], '')],
+    )
+    assert ret == 'from baz import bar\n'
+
+
+def test_replace_imports_from_does_not_replace_name():
+    ret = fix_file_contents(
+        'from foo import bar\n',
+        imports_to_replace=[(['foo', 'bar'], ['baz', 'hi'], '')],
+    )
+    assert ret == 'from foo import bar\n'
+
+
+def test_replace_imports_from_asname():
+    ret = fix_file_contents(
+        'from foo import bar as baz\n',
+        imports_to_replace=[(['foo'], ['baz'], '')],
+    )
+    assert ret == 'from baz import bar as baz\n'
+
+
+def test_replace_imports_specific_attribute_name():
+    ret = fix_file_contents(
+        'from foo import bar\n'
+        'from foo import baz\n',
+        imports_to_replace=[(['foo'], ['aaa'], 'bar')],
+    )
+    assert ret == (
+        'from aaa import bar\n'
+        'from foo import baz\n'
+    )
+
+
+def test_replace_module_imported():
+    ret = fix_file_contents(
+        'from six.moves import queue\n',
+        imports_to_replace=[(['six', 'moves', 'queue'], ['queue'], '')],
+    )
+    assert ret == 'import queue\n'
+
+
+def test_replace_module_imported_asname():
+    ret = fix_file_contents(
+        'from six.moves import queue as Queue\n',
+        imports_to_replace=[(['six', 'moves', 'queue'], ['queue'], '')],
+    )
+    assert ret == 'import queue as Queue\n'
+
+
 tfiles = pytest.mark.parametrize('filename', os.listdir('test_data/inputs'))
 
 
@@ -711,6 +787,34 @@ def test_py_options(tmpdir, futures, opt, expected):
     assert ret == expected
 
 
+def test_py3_plus_unsixes_imports_rename_module(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from six.moves.urllib.parse import quote_plus\n')
+    assert main((str(f), '--py3-plus'))
+    assert f.read() == 'from urllib.parse import quote_plus\n'
+
+
+def test_py3_plus_unsixes_imports_removes_builtins(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from six.moves import range\n')
+    assert main((str(f), '--py3-plus'))
+    assert f.read() == ''
+
+
+def test_py3_plus_unsixes_moved_attributes(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from six.moves import reduce\n')
+    assert main((str(f), '--py3-plus'))
+    assert f.read() == 'from functools import reduce\n'
+
+
+def test_py3_plus_does_not_unsix_moves_urllib(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from six.moves import urllib\n')
+    assert not main((str(f), '--py3-plus'))
+    assert f.read() == 'from six.moves import urllib\n'
+
+
 @pytest.mark.parametrize('opt', ('--add-import', '--remove-import'))
 @pytest.mark.parametrize('s', ('syntax error', '"import os"'))
 def test_invalid_add_remove_syntaxes(tmpdir, capsys, opt, s):
@@ -736,6 +840,31 @@ def test_can_remove_multiple_at_once(tmpdir):
     f.write('import argparse\nimport os\nimport sys\n')
     assert main((str(f), '--remove-import', 'import os, sys'))
     assert f.read() == 'import argparse\n'
+
+
+def test_replace_module(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from six.moves.urllib.parse import quote_plus\n')
+    assert main((
+        str(f), '--replace-import', 'six.moves.urllib.parse=urllib.parse',
+    ))
+    assert f.read() == 'from urllib.parse import quote_plus\n'
+
+
+@pytest.mark.parametrize('s', ('invalid', 'too=many=equals'))
+def test_replace_module_invalid_arg(tmpdir, capsys, s):
+    f = tmpdir.join('f.py')
+    f.write('import os\n')
+    with pytest.raises(SystemExit) as excinfo:
+        main((str(f), '--replace-import', s))
+    retc, = excinfo.value.args
+    assert retc
+    out = ''.join(capsys.readouterr())
+    expected = (
+        '--replace-import: expected `orig.mod=new.mod` or '
+        '`orig.mod=new.mod:attr`: {!r}'.format(s)
+    )
+    assert expected in out
 
 
 def test_unreadable_files_print_filename(tmpdir, capsys):

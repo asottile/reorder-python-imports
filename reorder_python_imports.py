@@ -25,17 +25,6 @@ class CodeType(object):
 
 CodePartition = collections.namedtuple('CodePartition', ('code_type', 'src'))
 
-FUTURE_IMPORTS = (
-    ('py22', ('nested_scopes',)),
-    ('py23', ('generators',)),
-    ('py26', ('with_statement',)),
-    (
-        'py3',
-        ('division', 'absolute_import', 'print_function', 'unicode_literals'),
-    ),
-    ('py37', ('generator_stop',)),
-)
-
 TERMINATES_COMMENT = frozenset((tokenize.NL, tokenize.ENDMARKER))
 TERMINATES_DOCSTRING = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
 TERMINATES_IMPORT = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
@@ -204,6 +193,53 @@ def remove_imports(partitions, to_remove=()):
     return list(_inner())
 
 
+def _mod_startswith(mod_parts, prefix_parts):
+    return mod_parts[:len(prefix_parts)] == prefix_parts
+
+
+def replace_imports(partitions, to_replace=()):
+    def _inner():
+        for partition in partitions:
+            if partition.code_type is CodeType.IMPORT:
+                import_obj = import_obj_from_str(partition.src)
+
+                # cannot rewrite import-imports: makes undefined names
+                if isinstance(import_obj, ImportImport):
+                    yield partition
+                    continue
+
+                mod_parts = import_obj.import_statement.module.split('.')
+                symbol = import_obj.import_statement.symbol
+                asname = import_obj.import_statement.asname
+
+                for orig_mod, new_mod, attr in to_replace:
+                    if (
+                            (attr == symbol and mod_parts == orig_mod) or
+                            (not attr and _mod_startswith(mod_parts, orig_mod))
+                    ):
+                        mod_parts[:len(orig_mod)] = new_mod
+                        import_obj.ast_obj.module = '.'.join(mod_parts)
+                        new_src = import_obj.to_text()
+                        yield partition._replace(src=new_src)
+                        break
+                    # from x.y import z => import z
+                    elif (
+                            not attr and
+                            mod_parts + [symbol] == orig_mod and
+                            len(new_mod) == 1
+                    ):
+                        mod_name, = new_mod
+                        asname_src = ' as {}'.format(asname) if asname else ''
+                        new_src = 'import {}{}\n'.format(mod_name, asname_src)
+                        yield partition._replace(src=new_src)
+                        break
+                else:
+                    yield partition
+            else:
+                yield partition
+    return list(_inner())
+
+
 def _module_to_base_modules(s):
     """return all module names that would be imported due to this
     import-import
@@ -333,20 +369,35 @@ def apply_import_sorting(
     return pre_import_code + new_imports + relative_imports + rest
 
 
-def _get_steps(imports_to_add, imports_to_remove, **sort_kwargs):
+def _get_steps(
+        imports_to_add,
+        imports_to_remove,
+        imports_to_replace,
+        **sort_kwargs
+):
     yield combine_trailing_code_chunks
     yield functools.partial(add_imports, to_add=imports_to_add)
     yield separate_comma_imports
     yield functools.partial(remove_imports, to_remove=imports_to_remove)
+    yield functools.partial(replace_imports, to_replace=imports_to_replace)
     yield remove_duplicated_imports
     yield functools.partial(apply_import_sorting, **sort_kwargs)
 
 
 def fix_file_contents(
-        contents, imports_to_add=(), imports_to_remove=(), **sort_kwargs
+        contents,
+        imports_to_add=(),
+        imports_to_remove=(),
+        imports_to_replace=(),
+        **sort_kwargs
 ):
     partitioned = partition_source(contents)
-    for step in _get_steps(imports_to_add, imports_to_remove, **sort_kwargs):
+    for step in _get_steps(
+            imports_to_add,
+            imports_to_remove,
+            imports_to_replace,
+            **sort_kwargs
+    ):
         partitioned = step(partitioned)
     return _partitions_to_src(partitioned)
 
@@ -367,6 +418,18 @@ def apply_reordering(new_contents, filename):
     print('Reordering imports in {}'.format(filename))
     with open(filename, 'wb') as f:
         f.write(new_contents.encode('UTF-8'))
+
+
+FUTURE_IMPORTS = (
+    ('py22', ('nested_scopes',)),
+    ('py23', ('generators',)),
+    ('py26', ('with_statement',)),
+    (
+        'py3',
+        ('division', 'absolute_import', 'print_function', 'unicode_literals'),
+    ),
+    ('py37', ('generator_stop',)),
+)
 
 
 def _add_future_options(parser):
@@ -395,6 +458,103 @@ def _future_removals(args):
         yield 'from __future__ import {}'.format(', '.join(to_remove))
 
 
+# GENERATED VIA generate-six-info
+# Using six==1.11.0
+SIX_REMOVALS = [
+    'from six.moves import filter',
+    'from six.moves import input',
+    'from six.moves import map',
+    'from six.moves import range',
+    'from six.moves import zip',
+]
+SIX_RENAMES = [
+    'six.moves.BaseHTTPServer=http.server',
+    'six.moves.CGIHTTPServer=http.server',
+    'six.moves.SimpleHTTPServer=http.server',
+    'six.moves._dummy_thread=_dummy_thread',
+    'six.moves._thread=_thread',
+    'six.moves.builtins=builtins',
+    'six.moves.cPickle=pickle',
+    'six.moves.configparser=configparser',
+    'six.moves.copyreg=copyreg',
+    'six.moves.dbm_gnu=dbm.gnu',
+    'six.moves.email_mime_base=email.mime.base',
+    'six.moves.email_mime_image=email.mime.image',
+    'six.moves.email_mime_multipart=email.mime.multipart',
+    'six.moves.email_mime_nonmultipart=email.mime.nonmultipart',
+    'six.moves.email_mime_text=email.mime.text',
+    'six.moves.html_entities=html.entities',
+    'six.moves.html_parser=html.parser',
+    'six.moves.http_client=http.client',
+    'six.moves.http_cookiejar=http.cookiejar',
+    'six.moves.http_cookies=http.cookies',
+    'six.moves.queue=queue',
+    'six.moves.reprlib=reprlib',
+    'six.moves.socketserver=socketserver',
+    'six.moves.tkinter=tkinter',
+    'six.moves.tkinter_colorchooser=tkinter.colorchooser',
+    'six.moves.tkinter_commondialog=tkinter.commondialog',
+    'six.moves.tkinter_constants=tkinter.constants',
+    'six.moves.tkinter_dialog=tkinter.dialog',
+    'six.moves.tkinter_dnd=tkinter.dnd',
+    'six.moves.tkinter_filedialog=tkinter.filedialog',
+    'six.moves.tkinter_font=tkinter.font',
+    'six.moves.tkinter_messagebox=tkinter.messagebox',
+    'six.moves.tkinter_scrolledtext=tkinter.scrolledtext',
+    'six.moves.tkinter_simpledialog=tkinter.simpledialog',
+    'six.moves.tkinter_tix=tkinter.tix',
+    'six.moves.tkinter_tkfiledialog=tkinter.filedialog',
+    'six.moves.tkinter_tksimpledialog=tkinter.simpledialog',
+    'six.moves.tkinter_ttk=tkinter.ttk',
+    'six.moves.urllib.error=urllib.error',
+    'six.moves.urllib.parse=urllib.parse',
+    'six.moves.urllib.request=urllib.request',
+    'six.moves.urllib.response=urllib.response',
+    'six.moves.urllib.robotparser=urllib.robotparser',
+    'six.moves.urllib_error=urllib.error',
+    'six.moves.urllib_parse=urllib.parse',
+    'six.moves.urllib_robotparser=urllib.robotparser',
+    'six.moves.xmlrpc_client=xmlrpc.client',
+    'six.moves.xmlrpc_server=xmlrpc.server',
+    'six.moves=collections:UserDict',
+    'six.moves=collections:UserList',
+    'six.moves=collections:UserString',
+    'six.moves=functools:reduce',
+    'six.moves=io:StringIO',
+    'six.moves=itertools:filterfalse',
+    'six.moves=itertools:zip_longest',
+    'six.moves=os:getcwd',
+    'six.moves=os:getcwdb',
+    'six.moves=subprocess:getoutput',
+    'six.moves=sys:intern',
+    'six=io:BytesIO',
+    'six=io:StringIO',
+]
+# END GENERATED
+
+
+def _is_py3(args):
+    for py, _ in FUTURE_IMPORTS:
+        if py.startswith('py3') and getattr(args, '{}_plus'.format(py)):
+            return True
+    else:
+        return False
+
+
+def _six_removals(args):
+    if _is_py3(args):
+        return SIX_REMOVALS
+    else:
+        return []
+
+
+def _six_replaces(args):
+    if _is_py3(args):
+        return [_validate_replace_import(s) for s in SIX_RENAMES]
+    else:
+        return []
+
+
 def _validate_import(s):
     try:
         import_obj_from_str(s)
@@ -402,6 +562,19 @@ def _validate_import(s):
         raise argparse.ArgumentTypeError('expected import: {!r}'.format(s))
     else:
         return s
+
+
+def _validate_replace_import(s):
+    mods, _, attr = s.partition(':')
+    try:
+        orig_mod, new_mod = mods.split('=')
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            'expected `orig.mod=new.mod` or '
+            '`orig.mod=new.mod:attr`: {!r}'.format(s),
+        )
+    else:
+        return orig_mod.split('.'), new_mod.split('.'), attr
 
 
 def main(argv=None):
@@ -424,6 +597,17 @@ def main(argv=None):
         '--remove-import', action='append', default=[], type=_validate_import,
         help=(
             'Import to remove from each file.  '
+            'Can be specified multiple times.'
+        ),
+    )
+    parser.add_argument(
+        '--replace-import', action='append', default=[],
+        type=_validate_replace_import,
+        help=(
+            'Module pairs to replace imports. '
+            'For example: `--replace-import orig.mod=new.mod`.  '
+            'For renames of a specific imported attribute, use the form '
+            '`--replace-import orig.mod=new.mod:attr`.  '
             'Can be specified multiple times.'
         ),
     )
@@ -455,6 +639,8 @@ def main(argv=None):
 
     args = parser.parse_args(argv)
     args.remove_import.extend(_future_removals(args))
+    args.remove_import.extend(_six_removals(args))
+    args.replace_import.extend(_six_replaces(args))
 
     retv = 0
     for filename in args.filenames:
@@ -473,6 +659,7 @@ def main(argv=None):
             contents,
             imports_to_add=args.add_import,
             imports_to_remove=args.remove_import,
+            imports_to_replace=args.replace_import,
             separate_relative=args.separate_relative,
             separate_from_import=args.separate_from_import,
             application_directories=args.application_directories.split(':'),
