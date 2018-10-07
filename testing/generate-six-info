@@ -36,6 +36,9 @@ def main():
         for submod in ('error', 'parse', 'request', 'response', 'robotparser')
     ]
 
+    # not in six.moves for some reason
+    renames.extend(('six=io:StringIO', 'six=io:BytesIO'))
+
     print(
         '# GENERATED VIA {}\n'
         '# Using six=={}\n'
@@ -44,8 +47,8 @@ def main():
         '# END GENERATED\n'.format(
             os.path.basename(sys.argv[0]),
             six.__version__,
-            ''.join('    {!r},\n'.format(r) for r in removes),
-            ''.join('    {!r},\n'.format(r) for r in renames),
+            ''.join('    {!r},\n'.format(r) for r in sorted(removes)),
+            ''.join('    {!r},\n'.format(r) for r in sorted(renames)),
         ),
     )
 
