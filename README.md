@@ -66,7 +66,7 @@ import sys
 from os import path
 ```
 
-### Splits `from` imports (may be configurable in the future!)
+### Splits `from` imports
 
 ```python
 from os.path import abspath, exists
