@@ -312,6 +312,14 @@ def test_remove_duplicate_redundant_import_imports():
     ]
 
 
+def test_aliased_imports_not_considered_redundant():
+    partitions = [
+        CodePartition(CodeType.IMPORT, 'import os\n'),
+        CodePartition(CodeType.IMPORT, 'import os.path as os_path\n'),
+    ]
+    assert remove_duplicated_imports(partitions) == partitions
+
+
 def test_apply_import_sorting_trivial():
     assert apply_import_sorting([]) == []
 
