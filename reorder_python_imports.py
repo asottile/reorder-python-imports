@@ -259,7 +259,10 @@ def remove_duplicated_imports(partitions):
             import_obj = import_obj_from_str(partition.src)
             if import_obj not in seen:
                 seen.add(import_obj)
-                if isinstance(import_obj, ImportImport):
+                if (
+                        isinstance(import_obj, ImportImport) and
+                        not import_obj.import_statement.asname
+                ):
                     seen_module_names.update(_module_to_base_modules(
                         import_obj.import_statement.module,
                     ))
