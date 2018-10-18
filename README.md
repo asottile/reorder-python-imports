@@ -19,6 +19,17 @@ Consult `reorder-python-imports --help` for the full set of options.
 
 `reorder-python-imports` takes filenames as positional arguments
 
+Common options:
+
+- `--py##-plus`: [see below](#removing-obsolete-__future__-imports).
+- `--add-import` / `--remove-import`: [see below](#adding--removing-imports).
+- `--replace-import`: [see below](#replacing-imports).
+- `--application-directories`: by default, `reorder-python-imports` assumes
+  your project is rooted at `.`.  If this isn't true, tell it where your
+  import roots live.  For example, when using the popular `./src` layout you'd
+  use `--application-directories=.:src` (note: multiple paths are separated
+  using a `:`).
+
 ## As a pre-commit hook
 
 See [pre-commit](https://github.com/pre-commit/pre-commit) for instructions
