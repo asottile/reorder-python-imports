@@ -320,6 +320,14 @@ def test_aliased_imports_not_considered_redundant():
     assert remove_duplicated_imports(partitions) == partitions
 
 
+def test_aliased_imports_not_considered_redundant_v2():
+    partitions = [
+        CodePartition(CodeType.IMPORT, 'import os as osmod\n'),
+        CodePartition(CodeType.IMPORT, 'import os.path\n'),
+    ]
+    assert remove_duplicated_imports(partitions) == partitions
+
+
 def test_apply_import_sorting_trivial():
     assert apply_import_sorting([]) == []
 
