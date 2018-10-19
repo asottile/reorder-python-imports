@@ -276,6 +276,7 @@ def remove_duplicated_imports(partitions):
             import_obj = import_obj_from_str(partition.src)
             if (
                     isinstance(import_obj, ImportImport) and
+                    not import_obj.import_statement.asname and
                     import_obj.import_statement.module in seen_module_names
             ):
                 continue
