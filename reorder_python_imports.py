@@ -45,8 +45,8 @@ class TopLevelImportVisitor(ast.NodeVisitor):
 def get_line_offsets_by_line_no(src):
     # Padded so we can index with line number
     offsets = [None, 0]
-    for line in src.splitlines():
-        offsets.append(offsets[-1] + len(line) + 1)
+    for line in src.splitlines(True):
+        offsets.append(offsets[-1] + len(line))
     return offsets
 
 
@@ -388,6 +388,17 @@ def _get_steps(
     yield functools.partial(apply_import_sorting, **sort_kwargs)
 
 
+def _most_common_line_ending(s):
+    # initialize in case there's no line endings at all
+    counts = collections.Counter({'\n': 0})
+    for line in s.splitlines(True):
+        for ending in ('\r\n', '\r', '\n'):
+            if line.endswith(ending):
+                counts[ending] += 1
+                break
+    return counts.most_common(1)[0][0]
+
+
 def fix_file_contents(
         contents,
         imports_to_add=(),
@@ -395,6 +406,10 @@ def fix_file_contents(
         imports_to_replace=(),
         **sort_kwargs
 ):
+    # internally use `'\n` as the newline and normalize at the very end
+    nl = _most_common_line_ending(contents)
+    contents = contents.replace('\r\n', '\n').replace('\r', '\n')
+
     partitioned = partition_source(contents)
     for step in _get_steps(
             imports_to_add,
@@ -403,7 +418,7 @@ def fix_file_contents(
             **sort_kwargs
     ):
         partitioned = step(partitioned)
-    return _partitions_to_src(partitioned)
+    return _partitions_to_src(partitioned).replace('\n', nl)
 
 
 def report_diff(contents, new_contents, filename):

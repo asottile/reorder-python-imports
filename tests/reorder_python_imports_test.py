@@ -222,7 +222,7 @@ def test_line_offsets_trivial():
 
 
 def test_line_offsets_no_eof_newline():
-    assert get_line_offsets_by_line_no('hello') == [None, 0, 6]
+    assert get_line_offsets_by_line_no('hello') == [None, 0, 5]
 
 
 def test_line_offsets_eof_newline():
@@ -772,6 +772,26 @@ def test_separate_relative_and_separate_from():
         '\n'
         'from . import bar\n'
     )
+
+
+def test_fix_crlf():
+    s = (
+        '"""foo"""\r\n'
+        'import os\r\n'
+        'import sys\r\n'
+        'x = 1\r\n'
+    )
+    assert fix_file_contents(s) == s
+
+
+def test_fix_cr():
+    s = (
+        '"""foo"""\r'
+        'import os\r'
+        'import sys\r'
+        'x = 1\r'
+    )
+    assert fix_file_contents(s) == s
 
 
 @pytest.mark.parametrize(
