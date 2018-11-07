@@ -546,6 +546,7 @@ SIX_RENAMES = [
     'six.moves=os:getcwdb',
     'six.moves=subprocess:getoutput',
     'six.moves=sys:intern',
+    'six=functools:wraps',
     'six=io:BytesIO',
     'six=io:StringIO',
 ]

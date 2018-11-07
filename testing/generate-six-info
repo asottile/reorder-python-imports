@@ -37,7 +37,11 @@ def main():
     ]
 
     # not in six.moves for some reason
-    renames.extend(('six=io:StringIO', 'six=io:BytesIO'))
+    renames.extend((
+        'six=functools:wraps',
+        'six=io:StringIO',
+        'six=io:BytesIO',
+    ))
 
     print(
         '# GENERATED VIA {}\n'
