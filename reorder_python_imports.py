@@ -125,6 +125,8 @@ def partition_source(src):
             chunks.append(CodePartition(CodeType.CODE, src[startpos:]))
             break
 
+    chunks = [chunk for chunk in chunks if chunk.src]
+
     # Make sure we're not removing any code
     assert _partitions_to_src(chunks) == src
     return chunks
