@@ -8,6 +8,7 @@ import collections
 import difflib
 import functools
 import io
+import re
 import sys
 import tokenize
 
@@ -199,6 +200,41 @@ def _mod_startswith(mod_parts, prefix_parts):
     return mod_parts[:len(prefix_parts)] == prefix_parts
 
 
+def enforce_froms(partitions, modules=()):
+    def _inner():
+        regexes = {
+            m: re.compile(r'(.*[^\d\W]|){}\.([^\d\W]\w*)'.format(m))
+            for m in modules
+        }
+        froms = collections.defaultdict(set)
+        for partition in partitions:
+            if partition.code_type is CodeType.IMPORT:
+                import_obj = import_obj_from_str(partition.src)
+
+                if isinstance(import_obj, ImportImport):
+                    module = import_obj.import_statement.module.split('.')[0]
+                    if module in modules:
+                        # we will be replacing this import later
+                        continue
+                yield partition
+            elif partition.code_type is CodeType.CODE:
+                src = partition.src
+                for module in modules:
+                    froms[module] |= {x[1]
+                                      for x in regexes[module].findall(src)}
+                    src = regexes[module].sub(r'\1\2', src)
+                yield CodePartition(CodeType.CODE, src)
+            else:
+                yield partition
+        for module, objs in froms.items():
+            for obj in objs:
+                yield CodePartition(
+                    CodeType.IMPORT,
+                    'from {} import {}'.format(module, obj),
+                )
+    return list(_inner())
+
+
 def replace_imports(partitions, to_replace=()):
     def _inner():
         for partition in partitions:
@@ -379,6 +415,7 @@ def _get_steps(
         imports_to_add,
         imports_to_remove,
         imports_to_replace,
+        imports_to_enforce_from,
         **sort_kwargs
 ):
     yield combine_trailing_code_chunks
@@ -386,6 +423,7 @@ def _get_steps(
     yield separate_comma_imports
     yield functools.partial(remove_imports, to_remove=imports_to_remove)
     yield functools.partial(replace_imports, to_replace=imports_to_replace)
+    yield functools.partial(enforce_froms, modules=imports_to_enforce_from)
     yield remove_duplicated_imports
     yield functools.partial(apply_import_sorting, **sort_kwargs)
 
@@ -406,6 +444,7 @@ def fix_file_contents(
         imports_to_add=(),
         imports_to_remove=(),
         imports_to_replace=(),
+        imports_to_enforce_from=(),
         **sort_kwargs
 ):
     # internally use `'\n` as the newline and normalize at the very end
@@ -417,6 +456,7 @@ def fix_file_contents(
             imports_to_add,
             imports_to_remove,
             imports_to_replace,
+            imports_to_enforce_from,
             **sort_kwargs
     ):
         partitioned = step(partitioned)
@@ -634,6 +674,10 @@ def main(argv=None):
         ),
     )
     parser.add_argument(
+        '--enforce-from-import', action='append', default=[],
+        help='Module which must only be imported as a "from" import.',
+    )
+    parser.add_argument(
         '--application-directories', default='.',
         help=(
             'Colon separated directories that are considered top-level '
@@ -682,6 +726,7 @@ def main(argv=None):
             imports_to_add=args.add_import,
             imports_to_remove=args.remove_import,
             imports_to_replace=args.replace_import,
+            imports_to_enforce_from=args.enforce_from_import,
             separate_relative=args.separate_relative,
             separate_from_import=args.separate_from_import,
             application_directories=args.application_directories.split(':'),

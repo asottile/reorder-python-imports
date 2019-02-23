@@ -594,7 +594,9 @@ def test_fix_file_contents(filename):
         input_contents = f.read()
     with io.open(os.path.join('test_data/outputs', filename)) as f:
         expected = f.read()
-    assert fix_file_contents(input_contents) == expected
+    assert fix_file_contents(
+        input_contents, imports_to_enforce_from=('random',),
+    ) == expected
 
 
 @tfiles
@@ -608,10 +610,12 @@ def test_integration_main(filename, tmpdir):
     test_file.write(input_contents)
 
     # Check return value with --diff-only
-    retv_diff = main((str(test_file), '--diff-only'))
+    retv_diff = main((
+        str(test_file), '--diff-only', '--enforce-from-import=random',
+    ))
     assert retv_diff == int(input_contents != expected)
 
-    retv = main((str(test_file),))
+    retv = main((str(test_file), '--enforce-from-import=random'))
     # Check return value
     assert retv == int(input_contents != expected)
 
