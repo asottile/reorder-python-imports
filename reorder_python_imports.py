@@ -265,9 +265,11 @@ def remove_duplicated_imports(partitions):
                         isinstance(import_obj, ImportImport) and
                         not import_obj.import_statement.asname
                 ):
-                    seen_module_names.update(_module_to_base_modules(
-                        import_obj.import_statement.module,
-                    ))
+                    seen_module_names.update(
+                        _module_to_base_modules(
+                            import_obj.import_statement.module,
+                        ),
+                    )
                 without_exact_duplicates.append(partition)
         else:
             without_exact_duplicates.append(partition)
@@ -424,11 +426,13 @@ def fix_file_contents(
 
 
 def report_diff(contents, new_contents, filename):
-    diff = ''.join(difflib.unified_diff(
-        io.StringIO(contents).readlines(),
-        io.StringIO(new_contents).readlines(),
-        fromfile=filename, tofile=filename,
-    ))
+    diff = ''.join(
+        difflib.unified_diff(
+            io.StringIO(contents).readlines(),
+            io.StringIO(new_contents).readlines(),
+            fromfile=filename, tofile=filename,
+        ),
+    )
     if not diff.endswith('\n'):
         diff += '\n\\ No newline at end of file\n'
 
