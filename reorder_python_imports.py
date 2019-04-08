@@ -8,6 +8,8 @@ import collections
 import difflib
 import functools
 import io
+import os
+import os.path
 import sys
 import tokenize
 
@@ -669,7 +671,16 @@ def main(argv=None):
     args.replace_import.extend(_six_replaces(args))
 
     retv = 0
+
+    filenames = []
     for filename in args.filenames:
+        if os.path.isdir(filename):
+            for dirpath, dirs, files in os.walk(filename):
+                filenames.extend([os.path.join(dirpath, f) for f in files if f.endswith('.py')])
+        else:
+            filenames.append(filename)
+
+    for filename in filenames:
         with open(filename, 'rb') as f:
             contents_bytes = f.read()
         try:
