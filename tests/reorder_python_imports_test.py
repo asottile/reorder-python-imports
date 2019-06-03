@@ -625,7 +625,10 @@ def test_integration_main_stdout(capsys):
     assert ret == 1
     out, err = capsys.readouterr()
     assert out == 'import os\n\nimport six\n\nimport reorder_python_imports\n'
-    assert err == '==> test_data/inputs/needs_reordering.py <==\n'
+    assert err == (
+        '--print-only is deprecated and will be removed\n'
+        '==> test_data/inputs/needs_reordering.py <==\n'
+    )
 
 
 def _apply_patch(patch):

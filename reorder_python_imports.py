@@ -613,7 +613,10 @@ def main(argv=None):
     )
     group.add_argument(
         '--print-only', action='store_true',
-        help='Print the output of a single file after reordering.',
+        help=(
+            '(Deprecated) '
+            'Print the output of a single file after reordering.'
+        ),
     )
     parser.add_argument(
         '--add-import', action='append', default=[], type=_validate_import,
@@ -700,6 +703,10 @@ def main(argv=None):
             if args.diff_only:
                 report_diff(contents, new_contents, filename)
             elif args.print_only:
+                print(
+                    '--print-only is deprecated and will be removed',
+                    file=sys.stderr,
+                )
                 print('==> {} <=='.format(filename), file=sys.stderr)
                 print(new_contents, end='')
             else:
