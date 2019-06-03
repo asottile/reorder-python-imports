@@ -439,12 +439,6 @@ def report_diff(contents, new_contents, filename):
     print(diff, end='')
 
 
-def apply_reordering(new_contents, filename):
-    print('Reordering imports in {}'.format(filename))
-    with open(filename, 'wb') as f:
-        f.write(new_contents.encode('UTF-8'))
-
-
 FUTURE_IMPORTS = (
     ('py22', ('nested_scopes',)),
     ('py23', ('generators',)),
@@ -613,7 +607,10 @@ def main(argv=None):
     )
     group.add_argument(
         '--print-only', action='store_true',
-        help='Print the output of a single file after reordering.',
+        help=(
+            '(Deprecated) '
+            'Print the output of a single file after reordering.'
+        ),
     )
     parser.add_argument(
         '--add-import', action='append', default=[], type=_validate_import,
@@ -670,8 +667,11 @@ def main(argv=None):
 
     retv = 0
     for filename in args.filenames:
-        with open(filename, 'rb') as f:
-            contents_bytes = f.read()
+        if filename == '-':
+            contents_bytes = getattr(sys.stdin, 'buffer', sys.stdin).read()
+        else:
+            with open(filename, 'rb') as f:
+                contents_bytes = f.read()
         try:
             contents = contents_bytes.decode('UTF-8')
         except UnicodeDecodeError:
@@ -690,15 +690,21 @@ def main(argv=None):
             separate_from_import=args.separate_from_import,
             application_directories=args.application_directories.split(':'),
         )
-        if contents != new_contents:
-            retv = 1
+        retv = contents != new_contents
+        if filename == '-':
+            print(new_contents, end='')
+        elif contents != new_contents:
             if args.diff_only:
                 report_diff(contents, new_contents, filename)
             elif args.print_only:
+                print('!!! --print-only is deprecated', file=sys.stderr)
+                print('!!! maybe use `-` instead?', file=sys.stderr)
                 print('==> {} <=='.format(filename), file=sys.stderr)
                 print(new_contents, end='')
             else:
-                apply_reordering(new_contents, filename)
+                print('Reordering imports in {}'.format(filename))
+                with open(filename, 'wb') as f:
+                    f.write(new_contents.encode('UTF-8'))
 
     return retv
 
