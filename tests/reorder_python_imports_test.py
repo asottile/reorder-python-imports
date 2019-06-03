@@ -8,6 +8,7 @@ import os.path
 import subprocess
 import sys
 
+import mock
 import pytest
 from reorder_python_imports import _mod_startswith
 from reorder_python_imports import apply_import_sorting
@@ -918,3 +919,19 @@ def test_unreadable_files_print_filename(tmpdir, capsys):
         main([filename])
     _, err = capsys.readouterr()
     assert filename in err
+
+
+def test_main_stdin_fix_basic(capsys):
+    s = io.TextIOWrapper(
+        io.BytesIO(
+            b'import sys\n'
+            b'import os\n',
+        ), 'UTF-8',
+    )
+    with mock.patch.object(sys, 'stdin', s):
+        assert main(('-',)) == 1
+    out, err = capsys.readouterr()
+    assert out == (
+        'import os\n'
+        'import sys\n'
+    )

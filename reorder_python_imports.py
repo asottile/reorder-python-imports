@@ -670,8 +670,11 @@ def main(argv=None):
 
     retv = 0
     for filename in args.filenames:
-        with open(filename, 'rb') as f:
-            contents_bytes = f.read()
+        if filename == '-':
+            contents_bytes = getattr(sys.stdin, 'buffer', sys.stdin).read()
+        else:
+            with open(filename, 'rb') as f:
+                contents_bytes = f.read()
         try:
             contents = contents_bytes.decode('UTF-8')
         except UnicodeDecodeError:
@@ -690,8 +693,10 @@ def main(argv=None):
             separate_from_import=args.separate_from_import,
             application_directories=args.application_directories.split(':'),
         )
-        if contents != new_contents:
-            retv = 1
+        retv = contents != new_contents
+        if filename == '-':
+            print(new_contents, end='')
+        elif contents != new_contents:
             if args.diff_only:
                 report_diff(contents, new_contents, filename)
             elif args.print_only:
