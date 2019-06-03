@@ -626,7 +626,8 @@ def test_integration_main_stdout(capsys):
     out, err = capsys.readouterr()
     assert out == 'import os\n\nimport six\n\nimport reorder_python_imports\n'
     assert err == (
-        '--print-only is deprecated and will be removed\n'
+        '!!! --print-only is deprecated\n'
+        '!!! maybe use `-` instead?\n'
         '==> test_data/inputs/needs_reordering.py <==\n'
     )
 
@@ -925,16 +926,18 @@ def test_unreadable_files_print_filename(tmpdir, capsys):
 
 
 def test_main_stdin_fix_basic(capsys):
-    s = io.TextIOWrapper(
-        io.BytesIO(
-            b'import sys\n'
-            b'import os\n',
-        ), 'UTF-8',
-    )
-    with mock.patch.object(sys, 'stdin', s):
+    input_b = b'import sys\nimport os\n'
+    stdin = io.TextIOWrapper(io.BytesIO(input_b), 'UTF-8')
+    with mock.patch.object(sys, 'stdin', stdin):
         assert main(('-',)) == 1
     out, err = capsys.readouterr()
-    assert out == (
-        'import os\n'
-        'import sys\n'
-    )
+    assert out == 'import os\nimport sys\n'
+
+
+def test_main_stdin_no_fix(capsys):
+    input_b = b'import os\nimport sys\n'
+    stdin = io.TextIOWrapper(io.BytesIO(input_b), 'UTF-8')
+    with mock.patch.object(sys, 'stdin', stdin):
+        assert main(('-',)) == 0
+    out, err = capsys.readouterr()
+    assert out == 'import os\nimport sys\n'

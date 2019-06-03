@@ -439,12 +439,6 @@ def report_diff(contents, new_contents, filename):
     print(diff, end='')
 
 
-def apply_reordering(new_contents, filename):
-    print('Reordering imports in {}'.format(filename))
-    with open(filename, 'wb') as f:
-        f.write(new_contents.encode('UTF-8'))
-
-
 FUTURE_IMPORTS = (
     ('py22', ('nested_scopes',)),
     ('py23', ('generators',)),
@@ -703,14 +697,14 @@ def main(argv=None):
             if args.diff_only:
                 report_diff(contents, new_contents, filename)
             elif args.print_only:
-                print(
-                    '--print-only is deprecated and will be removed',
-                    file=sys.stderr,
-                )
+                print('!!! --print-only is deprecated', file=sys.stderr)
+                print('!!! maybe use `-` instead?', file=sys.stderr)
                 print('==> {} <=='.format(filename), file=sys.stderr)
                 print(new_contents, end='')
             else:
-                apply_reordering(new_contents, filename)
+                print('Reordering imports in {}'.format(filename))
+                with open(filename, 'wb') as f:
+                    f.write(new_contents.encode('UTF-8'))
 
     return retv
 
