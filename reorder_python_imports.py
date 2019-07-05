@@ -425,7 +425,52 @@ def fix_file_contents(
     return _partitions_to_src(partitioned).replace('\n', nl)
 
 
-def report_diff(contents, new_contents, filename):
+def _fix_file(filename, args):
+    if filename == '-':
+        contents_bytes = getattr(sys.stdin, 'buffer', sys.stdin).read()
+    else:
+        with open(filename, 'rb') as f:
+            contents_bytes = f.read()
+    try:
+        contents = contents_bytes.decode('UTF-8')
+    except UnicodeDecodeError:
+        print(
+            '{} is non-utf-8 (not supported)'.format(filename),
+            file=sys.stderr,
+        )
+        return 1
+
+    new_contents = fix_file_contents(
+        contents,
+        imports_to_add=args.add_import,
+        imports_to_remove=args.remove_import,
+        imports_to_replace=args.replace_import,
+        separate_relative=args.separate_relative,
+        separate_from_import=args.separate_from_import,
+        application_directories=args.application_directories.split(':'),
+    )
+    if filename == '-':
+        print(new_contents, end='')
+    elif contents != new_contents:
+        if args.diff_only:
+            _report_diff(contents, new_contents, filename)
+        elif args.print_only:
+            print('!!! --print-only is deprecated', file=sys.stderr)
+            print('!!! maybe use `-` instead?', file=sys.stderr)
+            print('==> {} <=='.format(filename), file=sys.stderr)
+            print(new_contents, end='')
+        else:
+            print('Reordering imports in {}'.format(filename))
+            with open(filename, 'wb') as f:
+                f.write(new_contents.encode('UTF-8'))
+
+    if args.exit_zero_even_if_changed:
+        return 0
+    else:
+        return contents != new_contents
+
+
+def _report_diff(contents, new_contents, filename):
     diff = ''.join(
         difflib.unified_diff(
             io.StringIO(contents).readlines(),
@@ -668,49 +713,8 @@ def main(argv=None):
 
     retv = 0
     for filename in args.filenames:
-        if filename == '-':
-            contents_bytes = getattr(sys.stdin, 'buffer', sys.stdin).read()
-        else:
-            with open(filename, 'rb') as f:
-                contents_bytes = f.read()
-        try:
-            contents = contents_bytes.decode('UTF-8')
-        except UnicodeDecodeError:
-            print(
-                '{} is non-utf-8 (not supported)'.format(filename),
-                file=sys.stderr,
-            )
-            raise
-
-        new_contents = fix_file_contents(
-            contents,
-            imports_to_add=args.add_import,
-            imports_to_remove=args.remove_import,
-            imports_to_replace=args.replace_import,
-            separate_relative=args.separate_relative,
-            separate_from_import=args.separate_from_import,
-            application_directories=args.application_directories.split(':'),
-        )
-        retv = contents != new_contents
-        if filename == '-':
-            print(new_contents, end='')
-        elif contents != new_contents:
-            if args.diff_only:
-                report_diff(contents, new_contents, filename)
-            elif args.print_only:
-                print('!!! --print-only is deprecated', file=sys.stderr)
-                print('!!! maybe use `-` instead?', file=sys.stderr)
-                print('==> {} <=='.format(filename), file=sys.stderr)
-                print(new_contents, end='')
-            else:
-                print('Reordering imports in {}'.format(filename))
-                with open(filename, 'wb') as f:
-                    f.write(new_contents.encode('UTF-8'))
-
-    if args.exit_zero_even_if_changed:
-        return 0
-    else:
-        return retv
+        retv |= _fix_file(filename, args)
+    return retv
 
 
 if __name__ == '__main__':
