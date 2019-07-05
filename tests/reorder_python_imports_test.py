@@ -919,8 +919,7 @@ def test_unreadable_files_print_filename(tmpdir, capsys):
     f = tmpdir.join('f.py')
     f.write_binary(b'\x98\xef\x12...')
     filename = str(f)
-    with pytest.raises(UnicodeDecodeError):
-        main([filename])
+    assert main([filename])
     _, err = capsys.readouterr()
     assert filename in err
 
@@ -941,3 +940,18 @@ def test_main_stdin_no_fix(capsys):
         assert main(('-',)) == 0
     out, err = capsys.readouterr()
     assert out == 'import os\nimport sys\n'
+
+
+def test_main_exit_code_multiple_files(tmpdir):
+    f1 = tmpdir.join('t1.py')
+    f1.write('import os,sys\n')
+    f2 = tmpdir.join('t2.py').ensure()
+    assert main((str(f1), str(f2)))
+
+
+def test_exit_zero_even_if_changed(tmpdir):
+    f = tmpdir.join('t.py')
+    f.write('import os,sys')
+    assert not main((str(f), '--exit-zero-even-if-changed'))
+    assert f.read() == 'import os\nimport sys\n'
+    assert not main((str(f), '--exit-zero-even-if-changed'))
