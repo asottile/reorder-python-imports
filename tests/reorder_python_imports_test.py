@@ -941,3 +941,11 @@ def test_main_stdin_no_fix(capsys):
         assert main(('-',)) == 0
     out, err = capsys.readouterr()
     assert out == 'import os\nimport sys\n'
+
+
+def test_exit_zero_even_if_changed(tmpdir):
+    f = tmpdir.join('t.py')
+    f.write('import os,sys')
+    assert not main((str(f), '--exit-zero-even-if-changed'))
+    assert f.read() == 'import os\nimport sys\n'
+    assert not main((str(f), '--exit-zero-even-if-changed'))

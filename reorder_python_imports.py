@@ -612,6 +612,7 @@ def main(argv=None):
             'Print the output of a single file after reordering.'
         ),
     )
+    parser.add_argument('--exit-zero-even-if-changed', action='store_true')
     parser.add_argument(
         '--add-import', action='append', default=[], type=_validate_import,
         help='Import to add to each file.  Can be specified multiple times.',
@@ -706,7 +707,10 @@ def main(argv=None):
                 with open(filename, 'wb') as f:
                     f.write(new_contents.encode('UTF-8'))
 
-    return retv
+    if args.exit_zero_even_if_changed:
+        return 0
+    else:
+        return retv
 
 
 if __name__ == '__main__':
