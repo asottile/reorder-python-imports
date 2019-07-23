@@ -460,7 +460,8 @@ def _fix_file(filename, args):
             print('==> {} <=='.format(filename), file=sys.stderr)
             print(new_contents, end='')
         else:
-            print('Reordering imports in {}'.format(filename))
+            if not args.quiet:
+                print('Reordering imports in {}'.format(filename))
             with open(filename, 'wb') as f:
                 f.write(new_contents.encode('UTF-8'))
 
@@ -656,6 +657,10 @@ def main(argv=None):
             '(Deprecated) '
             'Print the output of a single file after reordering.'
         ),
+    )
+    group.add_argument(
+        '--quiet', action='store_true',
+        help='Do not print user messages on success.',
     )
     parser.add_argument('--exit-zero-even-if-changed', action='store_true')
     parser.add_argument(

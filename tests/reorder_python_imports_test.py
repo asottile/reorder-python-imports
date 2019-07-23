@@ -955,3 +955,25 @@ def test_exit_zero_even_if_changed(tmpdir):
     assert not main((str(f), '--exit-zero-even-if-changed'))
     assert f.read() == 'import os\nimport sys\n'
     assert not main((str(f), '--exit-zero-even-if-changed'))
+
+
+def test_user_messages_on_file_change(tmpdir, capsys):
+    f1 = tmpdir.join('changed1.py')
+    f1.write('import os,sys')
+    f2 = tmpdir.join('changed2.py')
+    f2.write('import sys\nimport os\n')
+    f3 = tmpdir.join('unchanged.py')
+    f3.write('import os\nimport sys\n')
+    main((str(f1), str(f2), str(f3)))
+    out, _ = capsys.readouterr()
+    assert 'Reordering imports in {}'.format(f1) in out
+    assert 'Reordering imports in {}'.format(f2) in out
+    assert 'Reordering imports in {}'.format(f3) not in out
+
+
+def test_no_output_on_success_if_quiet(tmpdir, capsys):
+    f = tmpdir.join('f.py')
+    f.write('import os,sys')
+    main((str(f), '--quiet'))
+    out = ''.join(capsys.readouterr())
+    assert not out
