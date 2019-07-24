@@ -460,7 +460,7 @@ def _fix_file(filename, args):
             print('==> {} <=='.format(filename), file=sys.stderr)
             print(new_contents, end='')
         else:
-            print('Reordering imports in {}'.format(filename))
+            print('Reordering imports in {}'.format(filename), file=sys.stderr)
             with open(filename, 'wb') as f:
                 f.write(new_contents.encode('UTF-8'))
 
