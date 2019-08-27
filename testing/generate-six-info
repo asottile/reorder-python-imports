@@ -5,7 +5,7 @@ import sys
 import six
 
 
-def main():
+def main():   # type: () -> int
     assert six.PY3, 'This must be run in python 3'
 
     removes = []
@@ -55,6 +55,8 @@ def main():
             ''.join('    {!r},\n'.format(r) for r in sorted(renames)),
         ),
     )
+
+    return 0
 
 
 if __name__ == '__main__':
