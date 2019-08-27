@@ -14,6 +14,7 @@ repos:
     rev: 3.7.7
     hooks:
     -   id: flake8
+        additional_dependencies: ['flake8-typing-imports==1.3.0']
 -   repo: https://github.com/pre-commit/mirrors-autopep8
     rev: v1.4.3
     hooks:
@@ -35,3 +36,7 @@ repos:
     rev: v1.0.0
     hooks:
     -   id: add-trailing-comma
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.720
+    hooks:
+    -   id: mypy

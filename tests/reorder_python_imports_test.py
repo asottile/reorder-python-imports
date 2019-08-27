@@ -35,7 +35,7 @@ def test_partition_source_trivial():
 
 def test_partition_source_errors_with_bytes():
     with pytest.raises((AttributeError, TypeError)):
-        partition_source(b'')
+        partition_source(b'')  # type: ignore
 
 
 def test_partition_source_shebang():
@@ -219,21 +219,21 @@ def test_import_visitor_ignores_indented_imports():
 
 
 def test_line_offsets_trivial():
-    assert get_line_offsets_by_line_no('') == [None, 0]
+    assert get_line_offsets_by_line_no('') == [0, 0]
 
 
 def test_line_offsets_no_eof_newline():
-    assert get_line_offsets_by_line_no('hello') == [None, 0, 5]
+    assert get_line_offsets_by_line_no('hello') == [0, 0, 5]
 
 
 def test_line_offsets_eof_newline():
-    assert get_line_offsets_by_line_no('hello\n') == [None, 0, 6]
+    assert get_line_offsets_by_line_no('hello\n') == [0, 0, 6]
 
 
 def test_line_offsets_multiple_lines():
     src = 'hello\nworld\n'
     ret = get_line_offsets_by_line_no(src)
-    assert ret == [None, 0, 6, 12]
+    assert ret == [0, 0, 6, 12]
     # To demonstrate how it is used: acquire everything from line 2 onwards
     assert src[ret[2]:] == 'world\n'
 
