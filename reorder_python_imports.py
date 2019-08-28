@@ -737,7 +737,7 @@ def main(argv=None):  # type: (Optional[Sequence[str]]) -> int
     parser.add_argument(
         '--separate-from-import', action='store_true',
         help=(
-            'Seperate `from xx import xx` imports from `import xx` imports'
+            'Separate `from xx import xx` imports from `import xx` imports'
             ' with a new line .'
         ),
     )
