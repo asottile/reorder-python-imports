@@ -6,7 +6,7 @@ import six
 
 
 def main():   # type: () -> int
-    assert six.PY3, 'This must be run in python 3'
+    assert not six.PY2, 'This must be run in at least python 3'
 
     removes = []
     renames = []
