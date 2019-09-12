@@ -800,39 +800,17 @@ def test_fix_cr():
 
 
 @pytest.mark.parametrize(
-    ('futures', 'opt', 'expected'),
-    (
-        (
-            {'with_statement', 'unicode_literals'},
-            '--py22-plus',
-            {'with_statement', 'unicode_literals'},
-        ),
-        (
-            {'with_statement', 'unicode_literals'},
-            '--py26-plus',
-            {'unicode_literals'},
-        ),
-        (
-            {'with_statement', 'unicode_literals'},
-            '--py3-plus',
-            set(),
-        ),
-    ),
-)
-def test_py_options(tmpdir, futures, opt, expected):
-    f = tmpdir.join('f.py')
-    src = 'from __future__ import {}'.format(', '.join(futures))
-    f.write(src)
-    main((str(f), opt))
-    ret = {l[len('from __future__ import '):].strip() for l in f.readlines()}
-    assert ret == expected
-
-
-@pytest.mark.parametrize(
     ('opt', 'expected'),
     (
         (
             '--py22-plus',
+            'from __future__ import unicode_literals\n'
+            'from __future__ import with_statement\n\n'
+            'from io import open\n',
+        ),
+        (
+            '--py26-plus',
+            'from __future__ import unicode_literals\n\n'
             'from io import open\n',
         ),
         (
@@ -841,13 +819,15 @@ def test_py_options(tmpdir, futures, opt, expected):
         ),
     ),
 )
-def test_py_options_io(tmpdir, opt, expected):
+def test_py_options(tmpdir, opt, expected):
     f = tmpdir.join('f.py')
-    src = 'from io import open\n'
-    f.write(src)
+    f.write(
+        'from __future__ import unicode_literals\n'
+        'from __future__ import with_statement\n\n'
+        'from io import open\n',
+    )
     main((str(f), opt))
-    ret = f.read()
-    assert ret == expected
+    assert f.read() == expected
 
 
 def test_py3_plus_unsixes_imports_rename_module(tmpdir):
