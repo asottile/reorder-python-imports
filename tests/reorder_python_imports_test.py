@@ -828,6 +828,28 @@ def test_py_options(tmpdir, futures, opt, expected):
     assert ret == expected
 
 
+@pytest.mark.parametrize(
+    ('opt', 'expected'),
+    (
+        (
+            '--py22-plus',
+            'from io import open\n',
+        ),
+        (
+            '--py3-plus',
+            '',
+        ),
+    ),
+)
+def test_py_options_io(tmpdir, opt, expected):
+    f = tmpdir.join('f.py')
+    src = 'from io import open\n'
+    f.write(src)
+    main((str(f), opt))
+    ret = f.read()
+    assert ret == expected
+
+
 def test_py3_plus_unsixes_imports_rename_module(tmpdir):
     f = tmpdir.join('f.py')
     f.write('from six.moves.urllib.parse import quote_plus\n')

@@ -548,7 +548,7 @@ def _add_future_options(parser):
         prev.append(opt)
 
 
-def _future_removals(args):
+def _version_removals(args):
     # type: (argparse.Namespace) -> Generator[str, None, None]
     implied = False
     to_remove = []  # type: List[str]
@@ -558,6 +558,11 @@ def _future_removals(args):
             to_remove.extend(removals)
     if to_remove:
         yield 'from __future__ import {}'.format(', '.join(to_remove))
+
+    if _is_py3(args):
+        for removal in SIX_REMOVALS:
+            yield removal
+        yield 'from io import open'
 
 
 # GENERATED VIA generate-six-info
@@ -642,13 +647,6 @@ def _is_py3(args):  # type: (argparse.Namespace) -> bool
             return True
     else:
         return False
-
-
-def _six_removals(args):  # type: (argparse.Namespace) -> List[str]
-    if _is_py3(args):
-        return SIX_REMOVALS
-    else:
-        return []
 
 
 def _six_replaces(args):  # type: (argparse.Namespace) -> List[ImportToReplace]
@@ -745,8 +743,7 @@ def main(argv=None):  # type: (Optional[Sequence[str]]) -> int
     _add_future_options(parser)
 
     args = parser.parse_args(argv)
-    args.remove_import.extend(_future_removals(args))
-    args.remove_import.extend(_six_removals(args))
+    args.remove_import.extend(_version_removals(args))
     args.replace_import.extend(_six_replaces(args))
 
     retv = 0
