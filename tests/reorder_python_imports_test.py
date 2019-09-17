@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 
 import ast
 import io
-import os.path
 import subprocess
 import sys
 
@@ -586,49 +585,149 @@ def test_replace_module_imported_asname():
     assert ret == 'import queue as Queue\n'
 
 
-tfiles = pytest.mark.parametrize('filename', os.listdir('test_data/inputs'))
+cases = pytest.mark.parametrize(
+    ('s', 'expected'),
+    (
+        pytest.param('', '', id='trivial'),
+        pytest.param(
+            'import os\n'
+            "# I'm right after imports\n"
+            'x = os.path\n',
+
+            'import os\n'
+            "# I'm right after imports\n"
+            'x = os.path\n',
+
+            id='code right after imports',
+        ),
+        pytest.param(
+            '# Mostly to demonstrate the (potentially non-ideal) behaviour\n'
+            'import os\n\n'
+            '# Hello from nomansland\n'
+            'import six\n',
+
+            '# Mostly to demonstrate the (potentially non-ideal) behaviour\n'
+            'import os\n\n'
+            'import six\n'
+            '# Hello from nomansland\n',
+
+            id='comment in imports',
+        ),
+        pytest.param(
+            "# I'm a license comment\n"
+            'import os\n',
+
+            "# I'm a license comment\n"
+            'import os\n',
+
+            id='license comment',
+        ),
+        pytest.param(
+            'import reorder_python_imports\n'
+            'import os\n'
+            'import six\n',
+
+            'import os\n\n'
+            'import six\n\n'
+            'import reorder_python_imports\n',
+
+            id='needs reordering',
+        ),
+        pytest.param(
+            'import sys\n'
+            'import os',
+
+            'import os\n'
+            'import sys\n',
+
+            id='no eol',
+        ),
+        pytest.param(
+            '# noreorder\n'
+            'import reorder_python_imports\n'
+            'import os\n'
+            'import six\n',
+
+            '# noreorder\n'
+            'import reorder_python_imports\n'
+            'import os\n'
+            'import six\n',
+
+            id='noreorder all',
+        ),
+        pytest.param(
+            'import sys\n'
+            'import reorder_python_imports\n\n'
+            'import matplotlib # noreorder\n'
+            "matplotlib.use('Agg')\n",
+
+            'import sys\n\n'
+            'import reorder_python_imports\n\n'
+            'import matplotlib # noreorder\n'
+            "matplotlib.use('Agg')\n",
+
+            id='noreorder inline',
+        ),
+        pytest.param(
+            'import sys\n'
+            'import reorder_python_imports\n\n'
+            '# noreorder\n'
+            'import matplotlib\n'
+            "matplotlib.use('Agg')\n",
+
+            'import sys\n\n'
+            'import reorder_python_imports\n\n'
+            '# noreorder\n'
+            'import matplotlib\n'
+            "matplotlib.use('Agg')\n",
+
+            id='noreorder not at beginning',
+        ),
+    ),
+)
 
 
-@tfiles
-def test_fix_file_contents(filename):
-    with io.open(os.path.join('test_data/inputs', filename)) as f:
-        input_contents = f.read()
-    with io.open(os.path.join('test_data/outputs', filename)) as f:
-        expected = f.read()
-    assert fix_file_contents(input_contents) == expected
+@cases
+def test_fix_file_contents(s, expected):
+    assert fix_file_contents(s) == expected
 
 
-@tfiles
-def test_integration_main(filename, tmpdir):
-    with io.open(os.path.join('test_data/inputs', filename)) as f:
-        input_contents = f.read()
-    with io.open(os.path.join('test_data/outputs', filename)) as f:
-        expected = f.read()
-
+@cases
+def test_integration_main(s, expected, tmpdir):
     test_file = tmpdir.join('test.py')
-    test_file.write(input_contents)
+    test_file.write(s)
 
     # Check return value with --diff-only
     retv_diff = main((str(test_file), '--diff-only'))
-    assert retv_diff == int(input_contents != expected)
+    assert retv_diff == int(s != expected)
 
     retv = main((str(test_file),))
     # Check return value
-    assert retv == int(input_contents != expected)
+    assert retv == int(s != expected)
 
     # Check the contents rewritten
     assert test_file.read() == expected
 
 
-def test_integration_main_stdout(capsys):
-    ret = main(('--print-only', 'test_data/inputs/needs_reordering.py'))
+def test_integration_main_stdout(tmpdir, capsys):
+    f = tmpdir.join('f.py')
+    f.write(
+        'import reorder_python_imports\n'
+        'import os\n'
+        'import six\n',
+    )
+    ret = main(('--print-only', f.strpath))
     assert ret == 1
     out, err = capsys.readouterr()
-    assert out == 'import os\n\nimport six\n\nimport reorder_python_imports\n'
+    assert out == (
+        'import os\n\n'
+        'import six\n\n'
+        'import reorder_python_imports\n'
+    )
     assert err == (
         '!!! --print-only is deprecated\n'
         '!!! maybe use `-` instead?\n'
-        '==> test_data/inputs/needs_reordering.py <==\n'
+        '==> {} <==\n'.format(f.strpath)
     )
 
 
