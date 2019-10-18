@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import ast
 import io
+import os
 import subprocess
 import sys
 
@@ -1064,4 +1065,13 @@ def test_success_messages_are_printed_on_stderr(tmpdir, capsys):
     main((str(f),))
     out, err = capsys.readouterr()
     assert err == 'Reordering imports in {}\n'.format(f)
+    assert out == ''
+
+
+def test_warning_pythonpath(tmpdir, capsys):
+    f = tmpdir.join('f.py').ensure()
+    with mock.patch.dict(os.environ, {'PYTHONPATH': str(tmpdir)}):
+        main((str(f),))
+    out, err = capsys.readouterr()
+    assert err == '$PYTHONPATH set, import order may be unexpected\n'
     assert out == ''

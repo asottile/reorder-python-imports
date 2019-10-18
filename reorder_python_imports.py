@@ -8,6 +8,7 @@ import collections
 import difflib
 import functools
 import io
+import os
 import sys
 import tokenize
 from typing import Any
@@ -745,6 +746,10 @@ def main(argv=None):  # type: (Optional[Sequence[str]]) -> int
     args = parser.parse_args(argv)
     args.remove_import.extend(_version_removals(args))
     args.replace_import.extend(_six_replaces(args))
+
+    if os.environ.get('PYTHONPATH'):
+        sys.stderr.write('$PYTHONPATH set, import order may be unexpected\n')
+        sys.stderr.flush()
 
     retv = 0
     for filename in args.filenames:
