@@ -531,6 +531,11 @@ FUTURE_IMPORTS = (
     ),
     ('py37', ('generator_stop',)),
 )  # type: Tuple[Tuple[str, Tuple[str, ...]], ...]
+BUILTINS = (  # from python-future
+    'ascii', 'bytes', 'chr', 'dict', 'filter', 'hex', 'input', 'int', 'list',
+    'map', 'max', 'min', 'next', 'object', 'oct', 'open', 'pow', 'range',
+    'round', 'str', 'super', 'zip',
+)
 
 
 def _add_future_options(parser):
@@ -564,11 +569,15 @@ def _version_removals(args):
         for removal in SIX_REMOVALS:
             yield removal
         yield 'from io import open'
+        yield 'from builtins import *'
+        yield 'from builtins import {}'.format(', '.join(BUILTINS))
 
 
 # GENERATED VIA generate-six-info
-# Using six==1.11.0
+# Using six==1.13.0
 SIX_REMOVALS = [
+    'from six import callable',
+    'from six import next',
     'from six.moves import filter',
     'from six.moves import input',
     'from six.moves import map',
@@ -583,9 +592,11 @@ SIX_RENAMES = [
     'six.moves._thread=_thread',
     'six.moves.builtins=builtins',
     'six.moves.cPickle=pickle',
+    'six.moves.collections_abc=collections.abc',
     'six.moves.configparser=configparser',
     'six.moves.copyreg=copyreg',
     'six.moves.dbm_gnu=dbm.gnu',
+    'six.moves.dbm_ndbm=dbm.ndbm',
     'six.moves.email_mime_base=email.mime.base',
     'six.moves.email_mime_image=email.mime.image',
     'six.moves.email_mime_multipart=email.mime.multipart',
