@@ -8,10 +8,11 @@ import six
 def main():   # type: () -> int
     assert not six.PY2, 'This must be run in at least python 3'
 
-    removes = []
+    # some special ones
+    removes = ['from six import callable', 'from six import next']
     renames = []
-    for move in six._moved_attributes:
-        if isinstance(move, six.MovedAttribute):
+    for move in six._moved_attributes:  # type: ignore
+        if isinstance(move, six.MovedAttribute):  # type: ignore
             if move.name != move.attr:
                 continue
 
@@ -19,7 +20,7 @@ def main():   # type: () -> int
                 removes.append('from six.moves import {}'.format(move.name))
             else:
                 renames.append('six.moves={}:{}'.format(move.mod, move.name))
-        elif isinstance(move, six.MovedModule):
+        elif isinstance(move, six.MovedModule):  # type: ignore
             if 'six.moves.{}'.format(move.name) == move.mod:
                 renames.append('six.moves.{}={}'.format(move.name, move.name))
             else:
@@ -50,7 +51,7 @@ def main():   # type: () -> int
         'SIX_RENAMES = [\n{}]\n'
         '# END GENERATED\n'.format(
             os.path.basename(sys.argv[0]),
-            six.__version__,
+            six.__version__,  # type: ignore
             ''.join('    {!r},\n'.format(r) for r in sorted(removes)),
             ''.join('    {!r},\n'.format(r) for r in sorted(renames)),
         ),

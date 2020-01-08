@@ -965,6 +965,20 @@ def test_py3_plus_does_not_unsix_moves_urllib(tmpdir):
     assert f.read() == 'from six.moves import urllib\n'
 
 
+def test_py3_plus_removes_python_future_imports(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from builtins import str\n')
+    assert main((str(f), '--py3-plus'))
+    assert f.read() == ''
+
+
+def test_py3_plus_removes_builtins_star_import(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from builtins import *')
+    assert main((str(f), '--py3-plus'))
+    assert f.read() == ''
+
+
 @pytest.mark.parametrize('opt', ('--add-import', '--remove-import'))
 @pytest.mark.parametrize('s', ('syntax error', '"import os"'))
 def test_invalid_add_remove_syntaxes(tmpdir, capsys, opt, s):
