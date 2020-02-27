@@ -17,14 +17,14 @@ def main():   # type: () -> int
                 continue
 
             if move.mod == 'builtins':
-                removes.append('from six.moves import {}'.format(move.name))
+                removes.append(f'from six.moves import {move.name}')
             else:
-                renames.append('six.moves={}:{}'.format(move.mod, move.name))
+                renames.append(f'six.moves={move.mod}:{move.name}')
         elif isinstance(move, six.MovedModule):  # type: ignore
-            if 'six.moves.{}'.format(move.name) == move.mod:
-                renames.append('six.moves.{}={}'.format(move.name, move.name))
+            if f'six.moves.{move.name}' == move.mod:
+                renames.append(f'six.moves.{move.name}={move.name}')
             else:
-                renames.append('six.moves.{}={}'.format(move.name, move.mod))
+                renames.append(f'six.moves.{move.name}={move.mod}')
         else:
             raise NotImplementedError(type(move))
 
@@ -33,7 +33,7 @@ def main():   # type: () -> int
     urllib_index = renames.index('six.moves.urllib=urllib')
     renames[urllib_index:urllib_index + 1] = [
         # but imports from submodules are fine
-        'six.moves.urllib.{0}=urllib.{0}'.format(submod)
+        f'six.moves.urllib.{submod}=urllib.{submod}'
         for submod in ('error', 'parse', 'request', 'response', 'robotparser')
     ]
 
@@ -44,17 +44,15 @@ def main():   # type: () -> int
         'six=io:BytesIO',
     ))
 
+    removes_s = ''.join(f'    {r!r},\n' for r in sorted(removes))
+    renames_s = ''.join(f'    {r!r},\n' for r in sorted(renames))
     print(
-        '# GENERATED VIA {}\n'
-        '# Using six=={}\n'
-        'SIX_REMOVALS = [\n{}]\n'
-        'SIX_RENAMES = [\n{}]\n'
-        '# END GENERATED\n'.format(
-            os.path.basename(sys.argv[0]),
-            six.__version__,  # type: ignore
-            ''.join('    {!r},\n'.format(r) for r in sorted(removes)),
-            ''.join('    {!r},\n'.format(r) for r in sorted(renames)),
-        ),
+        # https://github.com/python/typeshed/pull/3589
+        f'# GENERATED VIA {os.path.basename(sys.argv[0])}\n'  # type: ignore
+        f'# Using six=={six.__version__}\n'
+        f'SIX_REMOVALS = [\n{removes_s}]\n'
+        f'SIX_RENAMES = [\n{renames_s}]\n'
+        f'# END GENERATED\n',
     )
 
     return 0

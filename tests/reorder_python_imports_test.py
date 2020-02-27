@@ -1,14 +1,10 @@
-# -*- coding: UTF-8 -*-
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import ast
 import io
 import os
 import subprocess
 import sys
+from unittest import mock
 
-import mock
 import pytest
 from reorder_python_imports import _mod_startswith
 from reorder_python_imports import apply_import_sorting
@@ -726,9 +722,9 @@ def test_integration_main_stdout(tmpdir, capsys):
         'import reorder_python_imports\n'
     )
     assert err == (
-        '!!! --print-only is deprecated\n'
-        '!!! maybe use `-` instead?\n'
-        '==> {} <==\n'.format(f.strpath)
+        f'!!! --print-only is deprecated\n'
+        f'!!! maybe use `-` instead?\n'
+        f'==> {f} <==\n'
     )
 
 
@@ -989,7 +985,7 @@ def test_invalid_add_remove_syntaxes(tmpdir, capsys, opt, s):
     retc, = excinfo.value.args
     assert retc
     out = ''.join(capsys.readouterr())
-    assert '{}: expected import: {!r}'.format(opt, s) in out
+    assert f'{opt}: expected import: {s!r}' in out
 
 
 def test_can_add_multiple_imports_at_once(tmpdir):
@@ -1025,8 +1021,8 @@ def test_replace_module_invalid_arg(tmpdir, capsys, s):
     assert retc
     out = ''.join(capsys.readouterr())
     expected = (
-        '--replace-import: expected `orig.mod=new.mod` or '
-        '`orig.mod=new.mod:attr`: {!r}'.format(s)
+        f'--replace-import: expected `orig.mod=new.mod` or '
+        f'`orig.mod=new.mod:attr`: {s!r}'
     )
     assert expected in out
 
@@ -1078,7 +1074,7 @@ def test_success_messages_are_printed_on_stderr(tmpdir, capsys):
     f.write('import os,sys')
     main((str(f),))
     out, err = capsys.readouterr()
-    assert err == 'Reordering imports in {}\n'.format(f)
+    assert err == f'Reordering imports in {f}\n'
     assert out == ''
 
 

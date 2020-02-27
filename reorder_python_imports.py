@@ -1,11 +1,8 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
 import ast
 import collections
 import difflib
+import enum
 import functools
 import io
 import os
@@ -16,6 +13,7 @@ from typing import Callable
 from typing import Generator
 from typing import Iterable
 from typing import List
+from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Set
@@ -27,30 +25,27 @@ from aspy.refactor_imports.import_obj import import_obj_from_str
 from aspy.refactor_imports.import_obj import ImportImport
 from aspy.refactor_imports.sort import sort
 
-ImportToReplace = Tuple[List[str], List[str], str]
-Step = Callable[[Any], List['CodePartition']]
+CodeType = enum.Enum('CodeType', 'PRE_IMPORT_CODE IMPORT NON_CODE CODE')
 
 
-class CodeType(object):
-    PRE_IMPORT_CODE = 'pre_import_code'
-    IMPORT = 'import'
-    NON_CODE = 'non_code'
-    CODE = 'code'
+class CodePartition(NamedTuple):
+    code_type: CodeType
+    src: str
 
-
-CodePartition = collections.namedtuple('CodePartition', ('code_type', 'src'))
 
 TERMINATES_COMMENT = frozenset((tokenize.NL, tokenize.ENDMARKER))
 TERMINATES_DOCSTRING = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
 TERMINATES_IMPORT = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
 
+ImportToReplace = Tuple[List[str], List[str], str]
+Step = Callable[[Any], List[CodePartition]]
+
 
 class TopLevelImportVisitor(ast.NodeVisitor):
-    def __init__(self):  # type: () -> None
-        self.top_level_import_line_numbers = []  # type: List[int]
+    def __init__(self) -> None:
+        self.top_level_import_line_numbers: List[int] = []
 
-    def _visit_import(self, node):
-        # type: (Union[ast.Import, ast.ImportFrom]) -> None
+    def _visit_import(self, node: Union[ast.Import, ast.ImportFrom]) -> None:
         # If it's indented, we don't really care about the import.
         if node.col_offset == 0:
             self.top_level_import_line_numbers.append(node.lineno)
@@ -58,7 +53,7 @@ class TopLevelImportVisitor(ast.NodeVisitor):
     visit_Import = visit_ImportFrom = _visit_import
 
 
-def get_line_offsets_by_line_no(src):  # type: (str) -> List[int]
+def get_line_offsets_by_line_no(src: str) -> List[int]:
     # Padded so we can index with line number
     offsets = [0, 0]
     for line in src.splitlines(True):
@@ -66,17 +61,15 @@ def get_line_offsets_by_line_no(src):  # type: (str) -> List[int]
     return offsets
 
 
-def _partitions_to_src(partitions):  # type: (Iterable[CodePartition]) -> str
+def _partitions_to_src(partitions: Iterable[CodePartition]) -> str:
     return ''.join(part.src for part in partitions)
 
 
-def partition_source(src):  # type: (str) -> List[CodePartition]
+def partition_source(src: str) -> List[CodePartition]:
     """Partitions source into a list of `CodePartition`s for import
     refactoring.
     """
-    # In python2, ast.parse(text_string_with_encoding_pragma) raises
-    # SyntaxError: encoding declaration in Unicode string
-    ast_obj = ast.parse(src.encode('UTF-8'))
+    ast_obj = ast.parse(src.encode())
     visitor = TopLevelImportVisitor()
     visitor.visit(ast_obj)
 
@@ -148,8 +141,9 @@ def partition_source(src):  # type: (str) -> List[CodePartition]
     return chunks
 
 
-def combine_trailing_code_chunks(partitions):
-    # type: (Iterable[CodePartition]) -> List[CodePartition]
+def combine_trailing_code_chunks(
+        partitions: Iterable[CodePartition],
+) -> List[CodePartition]:
     chunks = list(partitions)
 
     NON_COMBINABLE = (CodeType.IMPORT, CodeType.PRE_IMPORT_CODE)
@@ -162,11 +156,11 @@ def combine_trailing_code_chunks(partitions):
     return chunks
 
 
-def separate_comma_imports(partitions):
-    # type: (Iterable[CodePartition]) -> List[CodePartition]
+def separate_comma_imports(
+        partitions: Iterable[CodePartition],
+) -> List[CodePartition]:
     """Turns `import a, b` into `import a` and `import b`"""
-    def _inner():
-        # type: () -> Generator[CodePartition, None, None]
+    def _inner() -> Generator[CodePartition, None, None]:
         for partition in partitions:
             if partition.code_type is CodeType.IMPORT:
                 import_obj = import_obj_from_str(partition.src)
@@ -183,8 +177,10 @@ def separate_comma_imports(partitions):
     return list(_inner())
 
 
-def add_imports(partitions, to_add=()):
-    # type: (Iterable[CodePartition], Tuple[str, ...]) -> List[CodePartition]
+def add_imports(
+        partitions: Iterable[CodePartition],
+        to_add: Tuple[str, ...] = (),
+) -> List[CodePartition]:
     partitions = list(partitions)
     if not _partitions_to_src(partitions).strip():
         return partitions
@@ -199,14 +195,15 @@ def add_imports(partitions, to_add=()):
     ]
 
 
-def remove_imports(partitions, to_remove=()):
-    # type: (Iterable[CodePartition], Tuple[str, ...]) -> List[CodePartition]
-    to_remove_imports = set()  # type: Set[AbstractImportObj]
+def remove_imports(
+        partitions: Iterable[CodePartition],
+        to_remove: Tuple[str, ...] = (),
+) -> List[CodePartition]:
+    to_remove_imports: Set[AbstractImportObj] = set()
     for s in to_remove:
         to_remove_imports.update(import_obj_from_str(s).split_imports())
 
-    def _inner():
-        # type: () -> Generator[CodePartition, None, None]
+    def _inner() -> Generator[CodePartition, None, None]:
         for partition in partitions:
             if (
                     partition.code_type is not CodeType.IMPORT or
@@ -217,18 +214,15 @@ def remove_imports(partitions, to_remove=()):
     return list(_inner())
 
 
-def _mod_startswith(mod_parts, prefix_parts):
-    # type: (List[str], Sequence[str]) -> bool
+def _mod_startswith(mod_parts: List[str], prefix_parts: List[str]) -> bool:
     return mod_parts[:len(prefix_parts)] == prefix_parts
 
 
 def replace_imports(
-        partitions,  # type: Iterable[CodePartition]
-        to_replace=(),  # type: Iterable[ImportToReplace]
-):
-    # type: (...) -> List[CodePartition]
-    def _inner():
-        # type: () -> Generator[CodePartition, None, None]
+        partitions: Iterable[CodePartition],
+        to_replace: Iterable[ImportToReplace] = (),
+) -> List[CodePartition]:
+    def _inner() -> Generator[CodePartition, None, None]:
         for partition in partitions:
             if partition.code_type is CodeType.IMPORT:
                 import_obj = import_obj_from_str(partition.src)
@@ -259,8 +253,8 @@ def replace_imports(
                             len(new_mod) == 1
                     ):
                         mod_name, = new_mod
-                        asname_src = ' as {}'.format(asname) if asname else ''
-                        new_src = 'import {}{}\n'.format(mod_name, asname_src)
+                        asname_src = f' as {asname}' if asname else ''
+                        new_src = f'import {mod_name}{asname_src}\n'
                         yield partition._replace(src=new_src)
                         break
                 else:
@@ -270,8 +264,7 @@ def replace_imports(
     return list(_inner())
 
 
-def _module_to_base_modules(s):
-    # type: (str) -> Generator[str, None, None]
+def _module_to_base_modules(s: str) -> Generator[str, None, None]:
     """return all module names that would be imported due to this
     import-import
     """
@@ -280,10 +273,11 @@ def _module_to_base_modules(s):
         yield '.'.join(parts[:i])
 
 
-def remove_duplicated_imports(partitions):
-    # type: (Iterable[CodePartition]) -> List[CodePartition]
-    seen = set()  # type: Set[AbstractImportObj]
-    seen_module_names = set()  # type: Set[str]
+def remove_duplicated_imports(
+        partitions: Iterable[CodePartition],
+) -> List[CodePartition]:
+    seen: Set[AbstractImportObj] = set()
+    seen_module_names: Set[str] = set()
     without_exact_duplicates = []
 
     for partition in partitions:
@@ -320,16 +314,15 @@ def remove_duplicated_imports(partitions):
 
 
 def apply_import_sorting(
-        partitions,
-        separate_relative=False,
-        separate_from_import=False,
-        **sort_kwargs
-):
-    # type: (Iterable[CodePartition], bool, bool, **Any) -> List[CodePartition]
-    pre_import_code = []  # type: List[CodePartition]
-    imports = []  # type: List[CodePartition]
-    trash = []  # type: List[CodePartition]
-    rest = []  # type: List[CodePartition]
+        partitions: Iterable[CodePartition],
+        separate_relative: bool = False,
+        separate_from_import: bool = False,
+        **sort_kwargs: Any,
+) -> List[CodePartition]:
+    pre_import_code: List[CodePartition] = []
+    imports: List[CodePartition] = []
+    trash: List[CodePartition] = []
+    rest: List[CodePartition] = []
     for partition in partitions:
         {
             CodeType.PRE_IMPORT_CODE: pre_import_code,
@@ -354,8 +347,10 @@ def apply_import_sorting(
     new_imports = []
     relative_imports = []
 
-    def _import_type_switches(last_import_obj, import_obj):
-        # type: (Optional[AbstractImportObj], AbstractImportObj) -> bool
+    def _import_type_switches(
+            last_import_obj: Optional[AbstractImportObj],
+            import_obj: AbstractImportObj,
+    ) -> bool:
         """Returns True if separate_from_import is True and  `import_obj` is
         :class:`aspy.refactor_imports.import_obj.FromImport`
         and ``last_import_obj`` is
@@ -410,12 +405,11 @@ def apply_import_sorting(
 
 
 def _get_steps(
-        imports_to_add,  # type: Tuple[str, ...]
-        imports_to_remove,  # type: Tuple[str, ...]
-        imports_to_replace,  # type: Iterable[ImportToReplace]
-        **sort_kwargs  # type: Any
-):
-    # type: (...) -> Generator[Step, None, None]
+        imports_to_add: Tuple[str, ...],
+        imports_to_remove: Tuple[str, ...],
+        imports_to_replace: Iterable[ImportToReplace],
+        **sort_kwargs: Any,
+) -> Generator[Step, None, None]:
     yield combine_trailing_code_chunks
     yield functools.partial(add_imports, to_add=imports_to_add)
     yield separate_comma_imports
@@ -425,8 +419,7 @@ def _get_steps(
     yield functools.partial(apply_import_sorting, **sort_kwargs)
 
 
-def _most_common_line_ending(s):
-    # type: (str) -> str
+def _most_common_line_ending(s: str) -> str:
     # initialize in case there's no line endings at all
     counts = collections.Counter({'\n': 0})
     for line in s.splitlines(True):
@@ -438,13 +431,12 @@ def _most_common_line_ending(s):
 
 
 def fix_file_contents(
-        contents,   # type: str
-        imports_to_add=(),  # type: Tuple[str, ...]
-        imports_to_remove=(),  # type: Tuple[str, ...]
-        imports_to_replace=(),  # type: Iterable[ImportToReplace]
-        **sort_kwargs  # type: Any
-):
-    # type: (...) -> str
+        contents: str,
+        imports_to_add: Tuple[str, ...] = (),
+        imports_to_remove: Tuple[str, ...] = (),
+        imports_to_replace: Iterable[ImportToReplace] = (),
+        **sort_kwargs: Any,
+) -> str:
     # internally use `'\n` as the newline and normalize at the very end
     nl = _most_common_line_ending(contents)
     contents = contents.replace('\r\n', '\n').replace('\r', '\n')
@@ -454,24 +446,23 @@ def fix_file_contents(
             imports_to_add,
             imports_to_remove,
             imports_to_replace,
-            **sort_kwargs
+            **sort_kwargs,
     ):
         partitioned = step(partitioned)
     return _partitions_to_src(partitioned).replace('\n', nl)
 
 
-def _fix_file(filename, args):
-    # type: (str, argparse.Namespace) -> int
+def _fix_file(filename: str, args: argparse.Namespace) -> int:
     if filename == '-':
         contents_bytes = getattr(sys.stdin, 'buffer', sys.stdin).read()
     else:
         with open(filename, 'rb') as f:
             contents_bytes = f.read()
     try:
-        contents = contents_bytes.decode('UTF-8')
+        contents = contents_bytes.decode()
     except UnicodeDecodeError:
         print(
-            '{} is non-utf-8 (not supported)'.format(filename),
+            f'{filename} is non-utf-8 (not supported)',
             file=sys.stderr,
         )
         return 1
@@ -493,12 +484,12 @@ def _fix_file(filename, args):
         elif args.print_only:
             print('!!! --print-only is deprecated', file=sys.stderr)
             print('!!! maybe use `-` instead?', file=sys.stderr)
-            print('==> {} <=='.format(filename), file=sys.stderr)
+            print(f'==> {filename} <==', file=sys.stderr)
             print(new_contents, end='')
         else:
-            print('Reordering imports in {}'.format(filename), file=sys.stderr)
+            print(f'Reordering imports in {filename}', file=sys.stderr)
             with open(filename, 'wb') as f:
-                f.write(new_contents.encode('UTF-8'))
+                f.write(new_contents.encode())
 
     if args.exit_zero_even_if_changed:
         return 0
@@ -506,8 +497,7 @@ def _fix_file(filename, args):
         return contents != new_contents
 
 
-def _report_diff(contents, new_contents, filename):
-    # type: (str, str, str) -> None
+def _report_diff(contents: str, new_contents: str, filename: str) -> None:
     diff = ''.join(
         difflib.unified_diff(
             io.StringIO(contents).readlines(),
@@ -521,7 +511,7 @@ def _report_diff(contents, new_contents, filename):
     print(diff, end='')
 
 
-FUTURE_IMPORTS = (
+FUTURE_IMPORTS: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
     ('py22', ('nested_scopes',)),
     ('py23', ('generators',)),
     ('py26', ('with_statement',)),
@@ -530,7 +520,7 @@ FUTURE_IMPORTS = (
         ('division', 'absolute_import', 'print_function', 'unicode_literals'),
     ),
     ('py37', ('generator_stop',)),
-)  # type: Tuple[Tuple[str, Tuple[str, ...]], ...]
+)
 BUILTINS = (  # from python-future
     'ascii', 'bytes', 'chr', 'dict', 'filter', 'hex', 'input', 'int', 'list',
     'map', 'max', 'min', 'next', 'object', 'oct', 'open', 'pow', 'range',
@@ -538,43 +528,38 @@ BUILTINS = (  # from python-future
 )
 
 
-def _add_future_options(parser):
-    # type: (argparse.ArgumentParser) -> None
-    prev = []  # type: List[str]
+def _add_future_options(parser: argparse.ArgumentParser) -> None:
+    prev: List[str] = []
     for py, removals in FUTURE_IMPORTS:
-        opt = '--{}-plus'.format(py)
+        opt = f'--{py}-plus'
         futures = ', '.join(removals)
-        implies = '. implies: {}'.format(', '.join(prev)) if prev else ''
+        implies = f'. implies: {", ".join(prev)}' if prev else ''
         parser.add_argument(
             opt, action='store_true',
-            help='Remove obsolete future imports ({}){}'.format(
-                futures, implies,
-            ),
+            help=f'Remove obsolete future imports ({futures}){implies}',
         )
         prev.append(opt)
 
 
-def _version_removals(args):
-    # type: (argparse.Namespace) -> Generator[str, None, None]
+def _version_removals(args: argparse.Namespace) -> Generator[str, None, None]:
     implied = False
-    to_remove = []  # type: List[str]
+    to_remove: List[str] = []
     for py, removals in reversed(FUTURE_IMPORTS):
-        implied |= getattr(args, '{}_plus'.format(py))
+        implied |= getattr(args, f'{py}_plus')
         if implied:
             to_remove.extend(removals)
     if to_remove:
-        yield 'from __future__ import {}'.format(', '.join(to_remove))
+        yield f'from __future__ import {", ".join(to_remove)}'
 
     if _is_py3(args):
-        for removal in SIX_REMOVALS:
-            yield removal
+        yield from SIX_REMOVALS
         yield 'from io import open'
         yield 'from builtins import *'
-        yield 'from builtins import {}'.format(', '.join(BUILTINS))
+        yield f'from builtins import {", ".join(BUILTINS)}'
 
 
 # GENERATED VIA generate-six-info
-# Using six==1.13.0
+# Using six==1.14.0
 SIX_REMOVALS = [
     'from six import callable',
     'from six import next',
@@ -653,44 +638,43 @@ SIX_RENAMES = [
 # END GENERATED
 
 
-def _is_py3(args):  # type: (argparse.Namespace) -> bool
+def _is_py3(args: argparse.Namespace) -> bool:
     for py, _ in FUTURE_IMPORTS:
-        if py.startswith('py3') and getattr(args, '{}_plus'.format(py)):
+        if py.startswith('py3') and getattr(args, f'{py}_plus'):
             return True
     else:
         return False
 
 
-def _six_replaces(args):  # type: (argparse.Namespace) -> List[ImportToReplace]
+def _six_replaces(args: argparse.Namespace) -> List[ImportToReplace]:
     if _is_py3(args):
         return [_validate_replace_import(s) for s in SIX_RENAMES]
     else:
         return []
 
 
-def _validate_import(s):  # type: (str) -> str
+def _validate_import(s: str) -> str:
     try:
         import_obj_from_str(s)
     except (SyntaxError, KeyError):
-        raise argparse.ArgumentTypeError('expected import: {!r}'.format(s))
+        raise argparse.ArgumentTypeError(f'expected import: {s!r}')
     else:
         return s
 
 
-def _validate_replace_import(s):  # type: (str) -> ImportToReplace
+def _validate_replace_import(s: str) -> ImportToReplace:
     mods, _, attr = s.partition(':')
     try:
         orig_mod, new_mod = mods.split('=')
     except ValueError:
         raise argparse.ArgumentTypeError(
-            'expected `orig.mod=new.mod` or '
-            '`orig.mod=new.mod:attr`: {!r}'.format(s),
+            f'expected `orig.mod=new.mod` or `orig.mod=new.mod:attr`: {s!r}',
         )
     else:
         return orig_mod.split('.'), new_mod.split('.'), attr
 
 
-def main(argv=None):  # type: (Optional[Sequence[str]]) -> int
+def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', nargs='*')
     group = parser.add_mutually_exclusive_group(required=False)
