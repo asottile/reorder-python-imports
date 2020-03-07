@@ -53,7 +53,7 @@ import pyramid
 import reorder_python_imports
 ```
 
-becomes
+becomes (stdlib, third party, first party)
 
 ```python
 import sys
