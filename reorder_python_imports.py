@@ -475,6 +475,7 @@ def _fix_file(filename: str, args: argparse.Namespace) -> int:
         separate_relative=args.separate_relative,
         separate_from_import=args.separate_from_import,
         application_directories=args.application_directories.split(':'),
+        unclassifiable_application_modules=args.unclassifiable,
     )
     if filename == '-':
         print(new_contents, end='')
@@ -717,6 +718,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help=(
             'Colon separated directories that are considered top-level '
             'application directories.  Defaults to `%(default)s`'
+        ),
+    )
+    parser.add_argument(
+        '--unclassifiable-application-module', action='append', default=[],
+        dest='unclassifiable',
+        help=(
+            '(may be specified multiple times) module names that are '
+            'considered application modules.  this setting is intended to be '
+            'used for things like C modules which may not always appear on '
+            'the filesystem'
         ),
     )
 
