@@ -29,6 +29,10 @@ Common options:
   import roots live.  For example, when using the popular `./src` layout you'd
   use `--application-directories=.:src` (note: multiple paths are separated
   using a `:`).
+- `--unclassifiable-application-module`: (may be specified multiple times)
+  modules names that are considered application modules.  this setting is
+  intended to be used for things like C modules which may not always appear on
+  the filesystem.
 
 ## As a pre-commit hook
 

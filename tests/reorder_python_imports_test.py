@@ -434,6 +434,22 @@ def test_apply_import_sorting_sorts_imports_with_separate_from_import():
     ]
 
 
+def test_apply_import_sorting_sorts_imports_with_application_module():
+    assert apply_import_sorting(
+        [
+            CodePartition(CodeType.IMPORT, 'import _c_module\n'),
+            CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
+            CodePartition(CodeType.IMPORT, 'import third_party\n'),
+        ],
+        unclassifiable_application_modules=['_c_module'],
+    ) == [
+        CodePartition(CodeType.IMPORT, 'import third_party\n'),
+        CodePartition(CodeType.NON_CODE, '\n'),
+        CodePartition(CodeType.IMPORT, 'import _c_module\n'),
+        CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
+    ]
+
+
 def test_apply_import_sorting_maintains_comments():
     input_partitions = [
         CodePartition(CodeType.IMPORT, 'import foo  # noqa\n'),
