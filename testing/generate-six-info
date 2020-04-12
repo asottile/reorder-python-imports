@@ -5,9 +5,7 @@ import sys
 import six
 
 
-def main():   # type: () -> int
-    assert not six.PY2, 'This must be run in at least python 3'
-
+def main() -> int:
     # some special ones
     removes = ['from six import callable', 'from six import next']
     renames = []
