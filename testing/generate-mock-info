@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+import os
+import sys
+import unittest.mock
+
+import mock
+
+
+def main() -> int:
+    # https://github.com/python/typeshed/pull/3923
+    mock_all, mock_version = mock.__all__, mock.__version__  # type: ignore
+    unittest_mock_all = unittest.mock.__all__  # type: ignore
+
+    attrs = set(mock_all).intersection(unittest_mock_all)
+
+    renames_s = '\n'.join(
+        sorted(
+            f"    '{orig_mod}=unittest.mock:{attr}',"
+            for orig_mod in ('mock', 'mock.mock')
+            for attr in attrs
+        ),
+    )
+
+    print(
+        f'# GENERATED VIA {os.path.basename(sys.argv[0])}\n'
+        f'# Using mock=={mock_version}\n'
+        f'MOCK_RENAMES = [\n{renames_s}\n]\n'
+        f'# END GENERATED\n',
+    )
+
+    return 0
+
+
+if __name__ == '__main__':
+    exit(main())

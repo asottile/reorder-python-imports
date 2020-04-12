@@ -639,6 +639,39 @@ SIX_RENAMES = [
 # END GENERATED
 
 
+# GENERATED VIA generate-mock-info
+# Using mock==4.0.2
+MOCK_RENAMES = [
+    'mock.mock=unittest.mock:ANY',
+    'mock.mock=unittest.mock:DEFAULT',
+    'mock.mock=unittest.mock:FILTER_DIR',
+    'mock.mock=unittest.mock:MagicMock',
+    'mock.mock=unittest.mock:Mock',
+    'mock.mock=unittest.mock:NonCallableMagicMock',
+    'mock.mock=unittest.mock:NonCallableMock',
+    'mock.mock=unittest.mock:PropertyMock',
+    'mock.mock=unittest.mock:call',
+    'mock.mock=unittest.mock:create_autospec',
+    'mock.mock=unittest.mock:mock_open',
+    'mock.mock=unittest.mock:patch',
+    'mock.mock=unittest.mock:sentinel',
+    'mock=unittest.mock:ANY',
+    'mock=unittest.mock:DEFAULT',
+    'mock=unittest.mock:FILTER_DIR',
+    'mock=unittest.mock:MagicMock',
+    'mock=unittest.mock:Mock',
+    'mock=unittest.mock:NonCallableMagicMock',
+    'mock=unittest.mock:NonCallableMock',
+    'mock=unittest.mock:PropertyMock',
+    'mock=unittest.mock:call',
+    'mock=unittest.mock:create_autospec',
+    'mock=unittest.mock:mock_open',
+    'mock=unittest.mock:patch',
+    'mock=unittest.mock:sentinel',
+]
+# END GENERATED
+
+
 def _is_py3(args: argparse.Namespace) -> bool:
     for py, _ in FUTURE_IMPORTS:
         if py.startswith('py3') and getattr(args, f'{py}_plus'):
@@ -647,9 +680,10 @@ def _is_py3(args: argparse.Namespace) -> bool:
         return False
 
 
-def _six_replaces(args: argparse.Namespace) -> List[ImportToReplace]:
+def _version_replaces(args: argparse.Namespace) -> List[ImportToReplace]:
     if _is_py3(args):
-        return [_validate_replace_import(s) for s in SIX_RENAMES]
+        renames = MOCK_RENAMES + SIX_RENAMES
+        return [_validate_replace_import(s) for s in renames]
     else:
         return []
 
@@ -751,7 +785,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     args = parser.parse_args(argv)
     args.remove_import.extend(_version_removals(args))
-    args.replace_import.extend(_six_replaces(args))
+    args.replace_import.extend(_version_replaces(args))
 
     if os.environ.get('PYTHONPATH'):
         sys.stderr.write('$PYTHONPATH set, import order may be unexpected\n')
