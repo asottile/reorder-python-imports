@@ -263,3 +263,12 @@ For example:
 -from six.moves import StringIO
 -from six.moves.urllib.parse import quote_plus
 ```
+
+## Rewriting mock imports
+
+With `--py3-plus`, `reorder-python-imports` will also rewrite various `mock` imports:
+
+```diff
+- from mock import patch
++ from unittest.mock import patch
+```

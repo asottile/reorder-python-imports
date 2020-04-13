@@ -970,11 +970,40 @@ def test_py3_plus_unsixes_wraps(tmpdir):
     assert f.read() == 'from functools import wraps\n'
 
 
+def test_py3_plus_rewrites_mock(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from mock import ANY\n')
+    assert main((str(f), '--py3-plus'))
+    assert f.read() == 'from unittest.mock import ANY\n'
+
+
+def test_py3_plus_rewrites_mock_mock(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from mock.mock import ANY\n')
+    assert main((str(f), '--py3-plus'))
+    assert f.read() == 'from unittest.mock import ANY\n'
+
+
+@pytest.mark.xfail(reason='TODO')  # pragma: no cover (assert #2 doesn't run)
+def test_py3_plus_rewrites_absolute_mock_to_relative_unittest_mock(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('import mock\n')
+    assert main((str(f), '--py3-plus'))
+    assert f.read() == 'from unittest import mock\n'
+
+
 def test_py3_plus_does_not_unsix_moves_urllib(tmpdir):
     f = tmpdir.join('f.py')
     f.write('from six.moves import urllib\n')
     assert not main((str(f), '--py3-plus'))
     assert f.read() == 'from six.moves import urllib\n'
+
+
+def test_py3_plus_does_not_rewrite_mock_version_info(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from mock import version_info\n')
+    assert not main((str(f), '--py3-plus'))
+    assert f.read() == 'from mock import version_info\n'
 
 
 def test_py3_plus_removes_python_future_imports(tmpdir):
