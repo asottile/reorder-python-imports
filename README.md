@@ -272,3 +272,14 @@ With `--py3-plus`, `reorder-python-imports` will also rewrite various `mock` imp
 -from mock import patch
 +from unittest.mock import patch
 ```
+
+## Rewriting `mypy_extensions` and `typing_extension` imports
+
+With `--py36-plus` and higher, `reorder-python-imports` will also rewrite
+`mypy_extensions` and `typing_extensions` imports ported to `typing`. Each option
+implies all older versions.
+
+```diff
+-from mypy_extensions import TypedDict
++from typing import TypedDict
+```

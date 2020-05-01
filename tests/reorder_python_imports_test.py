@@ -1020,6 +1020,20 @@ def test_py3_plus_removes_builtins_star_import(tmpdir):
     assert f.read() == ''
 
 
+def test_py37_plus_rewrites_typing_extensions_import(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from typing_extensions import Deque\n')
+    assert main((str(f), '--py37-plus'))
+    assert f.read() == 'from typing import Deque\n'
+
+
+def test_py38_plus_rewrites_mypy_extensions_import(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from mypy_extensions import TypedDict\n')
+    assert main((str(f), '--py38-plus'))
+    assert f.read() == 'from typing import TypedDict\n'
+
+
 @pytest.mark.parametrize('opt', ('--add-import', '--remove-import'))
 @pytest.mark.parametrize('s', ('syntax error', '"import os"'))
 def test_invalid_add_remove_syntaxes(tmpdir, capsys, opt, s):

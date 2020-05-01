@@ -522,6 +522,39 @@ FUTURE_IMPORTS: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
     ),
     ('py37', ('generator_stop',)),
 )
+# GENERATED VIA generate-typing-rewrite-info
+# Using:
+#     flake8-typing-imports==1.9.0
+#     mypy_extensions==0.4.3
+#     typing_extensions==3.7.4.2
+MYPY_EXTENSIONS_IMPORTS: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
+    ('py37', ('NoReturn',)),
+    ('py38', ('TypedDict',)),
+)
+TYPING_EXTENSIONS_IMPORTS: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
+    (
+        'py36', (
+            'AsyncIterable', 'AsyncIterator', 'Awaitable', 'ClassVar',
+            'ContextManager', 'Coroutine', 'DefaultDict', 'NewType',
+            'TYPE_CHECKING', 'Text', 'Type', 'overload',
+        ),
+    ),
+    (
+        'py37', (
+            'AsyncContextManager', 'AsyncGenerator', 'ChainMap', 'Counter',
+            'Deque',
+        ),
+    ),
+    (
+        'py38', (
+            'Final', 'Literal', 'Protocol', 'TypedDict', 'final',
+            'runtime_checkable',
+        ),
+    ),
+)
+# END GENERATED
+
+
 BUILTINS = (  # from python-future
     'ascii', 'bytes', 'chr', 'dict', 'filter', 'hex', 'input', 'int', 'list',
     'map', 'max', 'min', 'next', 'object', 'oct', 'open', 'pow', 'range',
@@ -529,17 +562,14 @@ BUILTINS = (  # from python-future
 )
 
 
-def _add_future_options(parser: argparse.ArgumentParser) -> None:
-    prev: List[str] = []
-    for py, removals in FUTURE_IMPORTS:
-        opt = f'--{py}-plus'
-        futures = ', '.join(removals)
-        implies = f'. implies: {", ".join(prev)}' if prev else ''
-        parser.add_argument(
-            opt, action='store_true',
-            help=f'Remove obsolete future imports ({futures}){implies}',
-        )
-        prev.append(opt)
+def _add_version_options(parser: argparse.ArgumentParser) -> None:
+    msg = 'Removes/updates obsolete imports; implies all older versions.'
+
+    for py in sorted({
+        py for py, _ in
+        FUTURE_IMPORTS + MYPY_EXTENSIONS_IMPORTS + TYPING_EXTENSIONS_IMPORTS
+    }):
+        parser.add_argument(f'--{py}-plus', action='store_true', help=msg)
 
 
 def _version_removals(args: argparse.Namespace) -> Generator[str, None, None]:
@@ -673,16 +703,34 @@ MOCK_RENAMES = [
 
 
 def _is_py3(args: argparse.Namespace) -> bool:
-    for py, _ in FUTURE_IMPORTS:
-        if py.startswith('py3') and getattr(args, f'{py}_plus'):
-            return True
-    else:
-        return False
+    pys = {
+        py for
+        py, _ in
+        FUTURE_IMPORTS + MYPY_EXTENSIONS_IMPORTS + TYPING_EXTENSIONS_IMPORTS
+    }
+
+    return any(
+        py.startswith('py3') and getattr(args, f'{py}_plus')
+        for py in pys
+    )
+
+
+def _typing_replaces(args: argparse.Namespace) -> Generator[str, None, None]:
+    for orig, imports in (
+        ('mypy_extensions', MYPY_EXTENSIONS_IMPORTS),
+        ('typing_extensions', TYPING_EXTENSIONS_IMPORTS),
+    ):
+        implied = False
+        for py, attrs in reversed(imports):
+            implied |= getattr(args, f'{py}_plus')
+            if implied:
+                for attr in attrs:
+                    yield f'{orig}=typing:{attr}'
 
 
 def _version_replaces(args: argparse.Namespace) -> List[ImportToReplace]:
     if _is_py3(args):
-        renames = MOCK_RENAMES + SIX_RENAMES
+        renames = MOCK_RENAMES + SIX_RENAMES + list(_typing_replaces(args))
         return [_validate_replace_import(s) for s in renames]
     else:
         return []
@@ -781,7 +829,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         ),
     )
 
-    _add_future_options(parser)
+    _add_version_options(parser)
 
     args = parser.parse_args(argv)
     args.remove_import.extend(_version_removals(args))
