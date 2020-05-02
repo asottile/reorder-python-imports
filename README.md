@@ -269,6 +269,6 @@ For example:
 With `--py3-plus`, `reorder-python-imports` will also rewrite various `mock` imports:
 
 ```diff
-- from mock import patch
-+ from unittest.mock import patch
+-from mock import patch
++from unittest.mock import patch
 ```
