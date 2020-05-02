@@ -777,7 +777,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         '--separate-from-import', action='store_true',
         help=(
             'Separate `from xx import xx` imports from `import xx` imports'
-            ' with a new line .'
+            ' with a new line.'
         ),
     )
 
