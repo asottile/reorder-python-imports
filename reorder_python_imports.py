@@ -759,7 +759,10 @@ def _validate_replace_import(s: str) -> ImportToReplace:
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument('filenames', nargs='*')
+    parser.add_argument(
+        'filenames', nargs='*',
+        help='If `-` is given, reads from stdin and writes to stdout.',
+    )
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument(
         '--diff-only', action='store_true',
@@ -769,7 +772,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         '--print-only', action='store_true',
         help=(
             '(Deprecated) '
-            'Print the output of a single file after reordering.'
+            'Print the output of a single file after reordering. '
+            'Consider using `-` for the filename instead.'
         ),
     )
     parser.add_argument('--exit-zero-even-if-changed', action='store_true')
