@@ -384,11 +384,7 @@ def apply_import_sorting(
         if last_import_obj is not None:
             new_imports.append(CodePartition(CodeType.NON_CODE, '\n'))
 
-    # There is another edge case if --separate-relative is passed while all the
-    # imports are relative. In that case we don't want an empty new line at the
-    # beginning of the block. We should insert the new line only if there are
-    # additional blocks.  See #134
-    if relative_imports and len(sorted_blocks) > 1:
+    if relative_imports:
         relative_imports.insert(0, CodePartition(CodeType.NON_CODE, '\n'))
     # XXX: I want something like [x].join(...) (like str join) but for now
     # this works

@@ -891,14 +891,6 @@ def test_separate_relative_and_separate_from():
     )
 
 
-def test_separate_relative_when_only_relative_imports_are_present():
-    src = (
-        'from . import bar\n'
-        'from . import foo\n'
-    )
-    assert fix_file_contents(src, separate_relative=True) == src
-
-
 def test_fix_crlf():
     s = (
         '"""foo"""\r\n'
