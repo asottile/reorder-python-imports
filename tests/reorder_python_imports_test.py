@@ -877,7 +877,21 @@ def test_separate_from_import_integration(in_tmpdir):
     )
 
 
-def test_separate_relative_and_separate_from():
+def test_separate_relative_and_separate_from_next_to_from_import():
+    ret = fix_file_contents(
+        'from reorder_python_imports import y\n'
+        'from . import z\n',
+        separate_from_import=True,
+        separate_relative=True,
+    )
+    assert ret == (
+        'from reorder_python_imports import y\n'
+        '\n'
+        'from . import z\n'
+    )
+
+
+def test_separate_relative_and_separate_from_next_to_import_import():
     ret = fix_file_contents(
         'import thirdparty\n'
         'from . import bar\n',
