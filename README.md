@@ -13,11 +13,28 @@ uses static analysis more.
 `pip install reorder-python-imports`
 
 
-## Console scripts
+## Usage
+
+### As a pre-commit hook
+
+The intention of the tool is that it should be run with
+[pre-commit](https://github.com/pre-commit/pre-commit) in order to use features
+such as complex file matching, dry runs and diffs.
+
+Sample `.pre-commit-config.yaml`
+
+```yaml
+-   repo: https://github.com/asottile/reorder_python_imports
+    rev: v2.3.5
+    hooks:
+    -   id: reorder-python-imports
+```
+
+### Console scripts
 
 Consult `reorder-python-imports --help` for the full set of options.
 
-`reorder-python-imports` takes filenames as positional arguments
+`reorder-python-imports` takes filenames as positional arguments.
 
 Common options:
 
@@ -34,18 +51,7 @@ Common options:
   intended to be used for things like C modules which may not always appear on
   the filesystem.
 
-## As a pre-commit hook
-
-See [pre-commit](https://github.com/pre-commit/pre-commit) for instructions
-
-Sample `.pre-commit-config.yaml`
-
-```yaml
--   repo: https://github.com/asottile/reorder_python_imports
-    rev: v2.3.5
-    hooks:
-    -   id: reorder-python-imports
-```
+[Directories are not a valid input](https://github.com/asottile/reorder_python_imports/pull/76).
 
 ## What does it do?
 
