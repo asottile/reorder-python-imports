@@ -744,9 +744,10 @@ def test_integration_main_stdout(tmpdir, capsys):
     )
 
 
-def _apply_patch(patch):
-    patch_proc = subprocess.Popen(('patch',), stdin=subprocess.PIPE)
-    patch_proc.communicate(patch.encode('UTF-8'))
+def _apply_patch(patch, origfile=None):
+    args = ('patch', origfile) if origfile else ('patch',)
+    patch_proc = subprocess.Popen(args, stdin=subprocess.PIPE)
+    patch_proc.communicate(patch.encode())
     assert patch_proc.returncode == 0
 
 
@@ -1133,6 +1134,27 @@ def test_main_stdin_no_fix(capsys):
         assert main(('-',)) == 0
     out, err = capsys.readouterr()
     assert out == 'import os\nimport sys\n'
+
+
+def test_main_stdin_diff_only(tmpdir, capsys):
+    tf = tmpdir.join('t.py')
+    input_b = b'import sys\nimport os\n'
+    tf.write(input_b)
+    stdin = io.TextIOWrapper(io.BytesIO(input_b), 'UTF-8')
+    with mock.patch.object(sys, 'stdin', stdin):
+        assert main(('-', '--diff-only')) == 1
+    out, _ = capsys.readouterr()
+    _apply_patch(out, origfile=tf)
+    assert tf.read() == 'import os\nimport sys\n'
+
+
+def test_main_stdin_diff_only_no_changes(capsys):
+    input_b = b'import os\nimport sys\n'
+    stdin = io.TextIOWrapper(io.BytesIO(input_b), 'UTF-8')
+    with mock.patch.object(sys, 'stdin', stdin):
+        assert main(('-', '--diff-only')) == 0
+    out, err = capsys.readouterr()
+    assert out == ''
 
 
 def test_main_exit_code_multiple_files(tmpdir):
