@@ -482,7 +482,10 @@ def _fix_file(filename: str, args: argparse.Namespace) -> int:
         unclassifiable_application_modules=args.unclassifiable,
     )
     if filename == '-':
-        print(new_contents, end='')
+        if args.diff_only:
+            _report_diff(contents, new_contents, '')
+        else:
+            print(new_contents, end='')
     elif contents != new_contents:
         if args.diff_only:
             _report_diff(contents, new_contents, filename)
@@ -510,7 +513,7 @@ def _report_diff(contents: str, new_contents: str, filename: str) -> None:
             fromfile=filename, tofile=filename,
         ),
     )
-    if not diff.endswith('\n'):
+    if diff and not diff.endswith('\n'):
         diff += '\n\\ No newline at end of file\n'
 
     print(diff, end='')
