@@ -1,5 +1,6 @@
 [![Build Status](https://dev.azure.com/asottile/asottile/_apis/build/status/asottile.reorder_python_imports?branchName=master)](https://dev.azure.com/asottile/asottile/_build/latest?definitionId=28&branchName=master)
 [![Azure DevOps coverage](https://img.shields.io/azure-devops/coverage/asottile/asottile/28/master.svg)](https://dev.azure.com/asottile/asottile/_build/latest?definitionId=28&branchName=master)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/asottile/reorder_python_imports/master.svg)](https://results.pre-commit.ci/latest/github/asottile/reorder_python_imports/master)
 
 reorder_python_imports
 ======================
