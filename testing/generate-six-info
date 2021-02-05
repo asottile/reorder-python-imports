@@ -48,8 +48,8 @@ def main() -> int:
         # https://github.com/python/typeshed/pull/3589
         f'# GENERATED VIA {os.path.basename(sys.argv[0])}\n'  # type: ignore
         f'# Using six=={six.__version__}\n'
-        f'SIX_REMOVALS = [\n{removes_s}]\n'
-        f'SIX_RENAMES = [\n{renames_s}]\n'
+        f'REMOVALS[(3,)].update((\n{removes_s}))\n'
+        f'REPLACES[(3,)].update((\n{renames_s}))\n'
         f'# END GENERATED\n',
     )
 

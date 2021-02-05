@@ -10,6 +10,7 @@ import sys
 import tokenize
 from typing import Any
 from typing import Callable
+from typing import Dict
 from typing import Generator
 from typing import Iterable
 from typing import List
@@ -519,86 +520,102 @@ def _report_diff(contents: str, new_contents: str, filename: str) -> None:
     print(diff, end='')
 
 
-FUTURE_IMPORTS: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
-    ('py22', ('nested_scopes',)),
-    ('py23', ('generators',)),
-    ('py26', ('with_statement',)),
-    (
-        'py3',
-        ('division', 'absolute_import', 'print_function', 'unicode_literals'),
-    ),
-    ('py37', ('generator_stop',)),
-)
-# GENERATED VIA generate-typing-rewrite-info
-# Using:
-#     flake8-typing-imports==1.9.0
-#     mypy_extensions==0.4.3
-#     typing_extensions==3.7.4.2
-MYPY_EXTENSIONS_IMPORTS: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
-    ('py37', ('NoReturn',)),
-    ('py38', ('TypedDict',)),
-)
-TYPING_EXTENSIONS_IMPORTS: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
-    (
-        'py36', (
-            'AsyncIterable', 'AsyncIterator', 'Awaitable', 'ClassVar',
-            'ContextManager', 'Coroutine', 'DefaultDict', 'NewType',
-            'TYPE_CHECKING', 'Text', 'Type', 'overload',
-        ),
-    ),
-    (
-        'py37', (
-            'AsyncContextManager', 'AsyncGenerator', 'ChainMap', 'Counter',
-            'Deque',
-        ),
-    ),
-    (
-        'py38', (
-            'Final', 'Literal', 'Protocol', 'TypedDict', 'final',
-            'runtime_checkable',
-        ),
-    ),
-)
+REMOVALS: Dict[Tuple[int, ...], Set[str]] = collections.defaultdict(set)
+REPLACES: Dict[Tuple[int, ...], Set[str]] = collections.defaultdict(set)
+
+REMOVALS[(3,)].add('from io import open')
+
+# GENERATED VIA generate-future-info
+REMOVALS[(2, 2)].add('from __future__ import nested_scopes')
+REMOVALS[(2, 3)].add('from __future__ import generators')
+REMOVALS[(2, 6)].add('from __future__ import with_statement')
+REMOVALS[(3,)].add('from __future__ import absolute_import, division, print_function, unicode_literals')  # noqa: E501
+REMOVALS[(3, 7)].add('from __future__ import generator_stop')
+REMOVALS[(3, 10)].add('from __future__ import annotations')
 # END GENERATED
 
+# GENERATED VIA generate-typing-rewrite-info
+# Using:
+#     flake8-typing-imports==1.10.1
+#     mypy_extensions==0.4.3
+#     typing_extensions==3.7.4.3
+REPLACES[(3, 7)].update((
+    'mypy_extensions=typing:NoReturn',
+))
+REPLACES[(3, 8)].update((
+    'mypy_extensions=typing:TypedDict',
+))
+REPLACES[(3, 6)].update((
+    'typing_extensions=typing:AsyncIterable',
+    'typing_extensions=typing:AsyncIterator',
+    'typing_extensions=typing:Awaitable',
+    'typing_extensions=typing:ClassVar',
+    'typing_extensions=typing:ContextManager',
+    'typing_extensions=typing:Coroutine',
+    'typing_extensions=typing:DefaultDict',
+    'typing_extensions=typing:NewType',
+    'typing_extensions=typing:TYPE_CHECKING',
+    'typing_extensions=typing:Text',
+    'typing_extensions=typing:Type',
+    'typing_extensions=typing:get_type_hints',
+    'typing_extensions=typing:overload',
+))
+REPLACES[(3, 7)].update((
+    'typing_extensions=typing:AsyncContextManager',
+    'typing_extensions=typing:AsyncGenerator',
+    'typing_extensions=typing:ChainMap',
+    'typing_extensions=typing:Counter',
+    'typing_extensions=typing:Deque',
+))
+REPLACES[(3, 8)].update((
+    'typing_extensions=typing:Final',
+    'typing_extensions=typing:Literal',
+    'typing_extensions=typing:Protocol',
+    'typing_extensions=typing:SupportsIndex',
+    'typing_extensions=typing:TypedDict',
+    'typing_extensions=typing:final',
+    'typing_extensions=typing:get_args',
+    'typing_extensions=typing:get_origin',
+    'typing_extensions=typing:runtime_checkable',
+))
+REPLACES[(3, 9)].update((
+    'typing_extensions=typing:Annotated',
+))
+# END GENERATED
 
-BUILTINS = (  # from python-future
-    'ascii', 'bytes', 'chr', 'dict', 'filter', 'hex', 'input', 'int', 'list',
-    'map', 'max', 'min', 'next', 'object', 'oct', 'open', 'pow', 'range',
-    'round', 'str', 'super', 'zip',
-)
-
-
-def _add_version_options(parser: argparse.ArgumentParser) -> None:
-    msg = 'Removes/updates obsolete imports; implies all older versions.'
-
-    for py in sorted({
-        py for py, _ in
-        FUTURE_IMPORTS + MYPY_EXTENSIONS_IMPORTS + TYPING_EXTENSIONS_IMPORTS
-    }):
-        parser.add_argument(f'--{py}-plus', action='store_true', help=msg)
-
-
-def _version_removals(args: argparse.Namespace) -> Generator[str, None, None]:
-    implied = False
-    to_remove: List[str] = []
-    for py, removals in reversed(FUTURE_IMPORTS):
-        implied |= getattr(args, f'{py}_plus')
-        if implied:
-            to_remove.extend(removals)
-    if to_remove:
-        yield f'from __future__ import {", ".join(to_remove)}'
-
-    if _is_py3(args):
-        yield from SIX_REMOVALS
-        yield 'from io import open'
-        yield 'from builtins import *'
-        yield f'from builtins import {", ".join(BUILTINS)}'
-
+# GENERATED VIA generate-python-future-info
+# Using future==0.18.2
+REMOVALS[(3,)].update((
+    'from builtins import *',
+    'from builtins import ascii',
+    'from builtins import bytes',
+    'from builtins import chr',
+    'from builtins import dict',
+    'from builtins import filter',
+    'from builtins import hex',
+    'from builtins import input',
+    'from builtins import int',
+    'from builtins import isinstance',
+    'from builtins import list',
+    'from builtins import map',
+    'from builtins import max',
+    'from builtins import min',
+    'from builtins import next',
+    'from builtins import object',
+    'from builtins import oct',
+    'from builtins import open',
+    'from builtins import pow',
+    'from builtins import range',
+    'from builtins import round',
+    'from builtins import str',
+    'from builtins import super',
+    'from builtins import zip',
+))
+# END GENERATED
 
 # GENERATED VIA generate-six-info
-# Using six==1.14.0
-SIX_REMOVALS = [
+# Using six==1.15.0
+REMOVALS[(3,)].update((
     'from six import callable',
     'from six import next',
     'from six.moves import filter',
@@ -606,8 +623,8 @@ SIX_REMOVALS = [
     'from six.moves import map',
     'from six.moves import range',
     'from six.moves import zip',
-]
-SIX_RENAMES = [
+))
+REPLACES[(3,)].update((
     'six.moves.BaseHTTPServer=http.server',
     'six.moves.CGIHTTPServer=http.server',
     'six.moves.SimpleHTTPServer=http.server',
@@ -672,13 +689,12 @@ SIX_RENAMES = [
     'six=functools:wraps',
     'six=io:BytesIO',
     'six=io:StringIO',
-]
+))
 # END GENERATED
 
-
 # GENERATED VIA generate-mock-info
-# Using mock==4.0.2
-MOCK_RENAMES = [
+# Using mock==4.0.3
+REPLACES[(3,)].update((
     'mock.mock=unittest.mock:ANY',
     'mock.mock=unittest.mock:DEFAULT',
     'mock.mock=unittest.mock:FILTER_DIR',
@@ -705,42 +721,24 @@ MOCK_RENAMES = [
     'mock=unittest.mock:mock_open',
     'mock=unittest.mock:patch',
     'mock=unittest.mock:sentinel',
-]
+))
 # END GENERATED
 
 
-def _is_py3(args: argparse.Namespace) -> bool:
-    pys = {
-        py for
-        py, _ in
-        FUTURE_IMPORTS + MYPY_EXTENSIONS_IMPORTS + TYPING_EXTENSIONS_IMPORTS
-    }
+def _add_version_options(parser: argparse.ArgumentParser) -> None:
+    versions = sorted(REMOVALS.keys() | REPLACES.keys())
 
-    return any(
-        py.startswith('py3') and getattr(args, f'{py}_plus')
-        for py in pys
+    msg = 'Removes/updates obsolete imports; implies all older versions.'
+    parser.add_argument(
+        f'--py{"".join(str(n) for n in versions[0])}-plus', help=msg,
+        action='store_const', dest='min_version', const=versions[0],
+        default=(0,),
     )
-
-
-def _typing_replaces(args: argparse.Namespace) -> Generator[str, None, None]:
-    for orig, imports in (
-        ('mypy_extensions', MYPY_EXTENSIONS_IMPORTS),
-        ('typing_extensions', TYPING_EXTENSIONS_IMPORTS),
-    ):
-        implied = False
-        for py, attrs in reversed(imports):
-            implied |= getattr(args, f'{py}_plus')
-            if implied:
-                for attr in attrs:
-                    yield f'{orig}=typing:{attr}'
-
-
-def _version_replaces(args: argparse.Namespace) -> List[ImportToReplace]:
-    if _is_py3(args):
-        renames = MOCK_RENAMES + SIX_RENAMES + list(_typing_replaces(args))
-        return [_validate_replace_import(s) for s in renames]
-    else:
-        return []
+    for version in versions[1:]:
+        parser.add_argument(
+            f'--py{"".join(str(n) for n in version)}-plus', help=msg,
+            action='store_const', dest='min_version', const=version,
+        )
 
 
 def _validate_import(s: str) -> str:
@@ -843,8 +841,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     _add_version_options(parser)
 
     args = parser.parse_args(argv)
-    args.remove_import.extend(_version_removals(args))
-    args.replace_import.extend(_version_replaces(args))
+
+    for k, v in REMOVALS.items():
+        if args.min_version >= k:
+            args.remove_import.extend(v)
+
+    for k, v in REPLACES.items():
+        if args.min_version >= k:
+            args.replace_import.extend(
+                _validate_replace_import(replace_s) for replace_s in v
+            )
 
     if os.environ.get('PYTHONPATH'):
         sys.stderr.write('$PYTHONPATH set, import order may be unexpected\n')

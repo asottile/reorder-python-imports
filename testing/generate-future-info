@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+import __future__
+
+import collections
+import os.path
+import sys
+
+
+def main() -> int:
+    assert sys.version_info >= (3, 10), 'need python3.10'
+
+    by_version = collections.defaultdict(list)
+
+    for k, v in vars(__future__).items():
+        if k == 'barry_as_FLUFL' or not hasattr(v, 'mandatory'):
+            continue
+
+        if v.mandatory[1] == 0:
+            version = (v.mandatory[0],)
+        else:
+            version = v.mandatory[:2]
+
+        by_version[version].append(k)
+
+    print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
+    for v_k, v in sorted(by_version.items()):
+        s = f'from __future__ import {", ".join(sorted(v))}'
+        line = f'REMOVALS[{v_k}].add({s!r})'
+        if len(line) >= 79:
+            line = f'{line}  # noqa: E501'
+        print(line)
+    print('# END GENERATED')
+
+    return 0
+
+
+if __name__ == '__main__':
+    exit(main())

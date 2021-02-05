@@ -17,37 +17,6 @@ else:
     from importlib_metadata import version
 
 
-def _serialize_short_imports(
-    imports: Dict[Tuple[float, float], List[str]],
-) -> str:
-    return '\n'.join(
-        f"    ('py{v[0]}{v[1]}', {tuple(attrs)!r}),"
-        for v, attrs in sorted(imports.items()) if attrs
-    )
-
-
-def _serialize_imports(
-    imports: Dict[Tuple[float, float], List[str]],
-) -> str:
-    parts = []
-    for v, attrs in sorted(imports.items()):
-        if not attrs:
-            continue
-        parts.append('    (')
-        parts.append(f"        'py{v[0]}{v[1]}', (")
-        accum = f'            {attrs[0]!r},'
-        for symbol in attrs[1:]:
-            if len(accum) + len(repr(symbol)) + 2 < 80:
-                accum += f' {symbol!r},'
-            else:
-                parts.append(f'{accum}')
-                accum = f'            {symbol!r},'
-        parts.append(f'{accum}')
-        parts.append('        ),')
-        parts.append('    ),')
-    return '\n'.join(parts)
-
-
 def main() -> int:
     flake8_typing_imports_version = version('flake8-typing-imports')
     mypy_extensions_version = version('mypy_extensions')
@@ -75,41 +44,48 @@ def main() -> int:
 
     # --pyXX-plus assumes the min --pyXX so group symbols by their
     # rounded up major version
-    symbols_rounded_up: Dict[Tuple[float, float], Set[str]] = defaultdict(set)
+    symbols_rounded_up: Dict[Tuple[int, int], Set[str]] = defaultdict(set)
     for v, attrs in sorted(symbols.items()):
         symbols_rounded_up[v.major, v.minor + int(v.patch != 0)] |= attrs
 
     # combine 3.5 and 3.6 because this lib is 3.6.1+
     symbols_rounded_up[(3, 6)] |= symbols_rounded_up.pop((3, 5))
 
-    deltas: Dict[Tuple[float, float], Set[str]] = defaultdict(set)
+    deltas: Dict[Tuple[int, int], Set[str]] = defaultdict(set)
     prev: Set[str] = set()
     for v, attrs in sorted(symbols_rounded_up.items()):
         deltas[v] = attrs - prev
         prev = attrs
 
-    mypy_extensions_added: Dict[Tuple[float, float], List[str]] = {}
-    typing_extensions_added: Dict[Tuple[float, float], List[str]] = {}
+    mypy_extensions_added: Dict[Tuple[int, int], List[str]] = {}
+    typing_extensions_added: Dict[Tuple[int, int], List[str]] = {}
     for v, attrs in deltas.items():
         mypy_extensions_added[v] = sorted(attrs & mypy_extensions_all)
         typing_extensions_added[v] = sorted(attrs & typing_extensions_all)
 
-    print(
-        f'# GENERATED VIA {os.path.basename(sys.argv[0])}\n'
-        f'# Using: \n'
-        f'#     flake8-typing-imports=={flake8_typing_imports_version}\n'
-        f'#     mypy_extensions=={mypy_extensions_version}\n'
-        f'#     typing_extensions=={typing_extensions_version}\n'
-        f'MYPY_EXTENSIONS_IMPORTS: '
-        f'Tuple[Tuple[str, Tuple[str, ...]], ...] = (\n'
-        f'{_serialize_short_imports(mypy_extensions_added)}\n'
-        f')\n'
-        f'TYPING_EXTENSIONS_IMPORTS: '
-        f'Tuple[Tuple[str, Tuple[str, ...]], ...] = (\n'
-        f'{_serialize_imports(typing_extensions_added)}\n'
-        f')\n'
-        f'# END GENERATED\n',
-    )
+    print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
+    print('# Using:')
+    print(f'#     flake8-typing-imports=={flake8_typing_imports_version}')
+    print(f'#     mypy_extensions=={mypy_extensions_version}')
+    print(f'#     typing_extensions=={typing_extensions_version}')
+
+    for k, v in sorted(mypy_extensions_added.items()):
+        if not v:
+            continue
+        print(f'REPLACES[{k}].update((')
+        for symbol in sorted(v):
+            print(f"    'mypy_extensions=typing:{symbol}',")
+        print('))')
+
+    for k, v in sorted(typing_extensions_added.items()):
+        if not v:
+            continue
+        print(f'REPLACES[{k}].update((')
+        for symbol in sorted(v):
+            print(f"    'typing_extensions=typing:{symbol}',")
+        print('))')
+
+    print('# END GENERATED')
 
     return 0
 
