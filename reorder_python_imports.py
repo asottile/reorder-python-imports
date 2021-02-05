@@ -583,6 +583,42 @@ REPLACES[(3, 9)].update((
 ))
 # END GENERATED
 
+# GENERATED VIA generate-typing-pep585-rewrites
+REPLACES[(3, 9)].update((
+    'typing=collections.abc:AsyncGenerator',
+    'typing=collections.abc:AsyncIterable',
+    'typing=collections.abc:AsyncIterator',
+    'typing=collections.abc:Awaitable',
+    'typing=collections.abc:ByteString',
+    'typing=collections.abc:Callable',
+    'typing=collections.abc:Collection',
+    'typing=collections.abc:Container',
+    'typing=collections.abc:Coroutine',
+    'typing=collections.abc:Generator',
+    'typing=collections.abc:Hashable',
+    'typing=collections.abc:ItemsView',
+    'typing=collections.abc:Iterable',
+    'typing=collections.abc:Iterator',
+    'typing=collections.abc:KeysView',
+    'typing=collections.abc:Mapping',
+    'typing=collections.abc:MappingView',
+    'typing=collections.abc:MutableMapping',
+    'typing=collections.abc:MutableSequence',
+    'typing=collections.abc:MutableSet',
+    'typing=collections.abc:Reversible',
+    'typing=collections.abc:Sequence',
+    'typing=collections.abc:Sized',
+    'typing=collections.abc:ValuesView',
+    'typing=collections:ChainMap',
+    'typing=collections:Counter',
+    'typing=collections:OrderedDict',
+    'typing=re:Match',
+    'typing=re:Pattern',
+    'typing.re=re:Match',
+    'typing.re=re:Pattern',
+))
+# END GENERATED
+
 # GENERATED VIA generate-python-future-info
 # Using future==0.18.2
 REMOVALS[(3,)].update((

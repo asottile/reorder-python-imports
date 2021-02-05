@@ -244,6 +244,7 @@ all older versions.
 - `--py3-plus`: `division`, `absolute_import`, `print_function`,
   `unicode_literals`
 - `--py37-plus`: `generator_stop`
+- `--py310-plus`: `annotations`
 
 ## Removing / rewriting obsolete `six` imports
 
@@ -277,10 +278,21 @@ With `--py3-plus`, `reorder-python-imports` will also rewrite various `mock` imp
 ## Rewriting `mypy_extensions` and `typing_extension` imports
 
 With `--py36-plus` and higher, `reorder-python-imports` will also rewrite
-`mypy_extensions` and `typing_extensions` imports ported to `typing`. Each option
-implies all older versions.
+`mypy_extensions` and `typing_extensions` imports ported to `typing`.
 
 ```diff
 -from mypy_extensions import TypedDict
 +from typing import TypedDict
 ```
+
+## Rewriting pep 585 typing imports
+
+With `--py39-plus` and higher, `reorder-python-imports` will replace imports
+which were moved out of the typing module in [pep 585].
+
+```diff
+-from typing import Sequence
++from collections.abc import Sequence
+```
+
+[pep 585]: https://www.python.org/dev/peps/pep-0585/

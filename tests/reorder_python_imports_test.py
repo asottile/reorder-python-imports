@@ -1057,6 +1057,13 @@ def test_py38_plus_rewrites_mypy_extensions_import(tmpdir):
     assert f.read() == 'from typing import TypedDict\n'
 
 
+def test_py39_plus_rewrites_pep585_imports(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from typing import Sequence\n')
+    assert main((str(f), '--py39-plus'))
+    assert f.read() == 'from collections.abc import Sequence\n'
+
+
 @pytest.mark.parametrize('opt', ('--add-import', '--remove-import'))
 @pytest.mark.parametrize('s', ('syntax error', '"import os"'))
 def test_invalid_add_remove_syntaxes(tmpdir, capsys, opt, s):
