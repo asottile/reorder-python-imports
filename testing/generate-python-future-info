@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+import builtins
+import os.path
+import sys
+
+import future.builtins
+
+
+def main() -> int:
+
+    names = sorted(
+        k for k, v in vars(future.builtins).items()
+        if getattr(builtins, k, None) is v
+    )
+    print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
+    print(f'# Using future=={future.__version__}')
+    print('REMOVALS[(3,)].update((')
+    print("    'from builtins import *',")
+    for name in names:
+        print(f"    'from builtins import {name}',")
+    print('))')
+    print('# END GENERATED')
+
+    return 0
+
+
+if __name__ == '__main__':
+    exit(main())
