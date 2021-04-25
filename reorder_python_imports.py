@@ -531,7 +531,6 @@ REMOVALS[(2, 3)].add('from __future__ import generators')
 REMOVALS[(2, 6)].add('from __future__ import with_statement')
 REMOVALS[(3,)].add('from __future__ import absolute_import, division, print_function, unicode_literals')  # noqa: E501
 REMOVALS[(3, 7)].add('from __future__ import generator_stop')
-REMOVALS[(3, 10)].add('from __future__ import annotations')
 # END GENERATED
 
 # GENERATED VIA generate-typing-rewrite-info
