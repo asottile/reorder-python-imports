@@ -244,7 +244,6 @@ all older versions.
 - `--py3-plus`: `division`, `absolute_import`, `print_function`,
   `unicode_literals`
 - `--py37-plus`: `generator_stop`
-- `--py310-plus`: `annotations`
 
 ## Removing / rewriting obsolete `six` imports
 
