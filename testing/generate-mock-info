@@ -9,9 +9,8 @@ def main() -> int:
 
     mock = __import__('mock')  # avoid self-rewriting!
 
-    # https://github.com/python/typeshed/pull/3923
     mock_all, mock_version = mock.__all__, mock.__version__
-    unittest_mock_all = unittest.mock.__all__  # type: ignore
+    unittest_mock_all = unittest.mock.__all__
 
     attrs = set(mock_all).intersection(unittest_mock_all)
 
