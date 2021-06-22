@@ -10,7 +10,7 @@ def main() -> int:
     removes = ['from six import callable', 'from six import next']
     renames = []
     for move in six._moved_attributes:  # type: ignore
-        if isinstance(move, six.MovedAttribute):  # type: ignore
+        if isinstance(move, six.MovedAttribute):
             if move.name != move.attr:
                 continue
 
@@ -18,7 +18,7 @@ def main() -> int:
                 removes.append(f'from six.moves import {move.name}')
             else:
                 renames.append(f'six.moves={move.mod}:{move.name}')
-        elif isinstance(move, six.MovedModule):  # type: ignore
+        elif isinstance(move, six.MovedModule):
             if f'six.moves.{move.name}' == move.mod:
                 renames.append(f'six.moves.{move.name}={move.name}')
             else:
@@ -45,8 +45,7 @@ def main() -> int:
     removes_s = ''.join(f'    {r!r},\n' for r in sorted(removes))
     renames_s = ''.join(f'    {r!r},\n' for r in sorted(renames))
     print(
-        # https://github.com/python/typeshed/pull/3589
-        f'# GENERATED VIA {os.path.basename(sys.argv[0])}\n'  # type: ignore
+        f'# GENERATED VIA {os.path.basename(sys.argv[0])}\n'
         f'# Using six=={six.__version__}\n'
         f'REMOVALS[(3,)].update((\n{removes_s}))\n'
         f'REPLACES[(3,)].update((\n{renames_s}))\n'
