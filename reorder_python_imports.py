@@ -491,8 +491,6 @@ def _fix_file(filename: str, args: argparse.Namespace) -> int:
         if args.diff_only:
             _report_diff(contents, new_contents, filename)
         elif args.print_only:
-            print('!!! --print-only is deprecated', file=sys.stderr)
-            print('!!! maybe use `-` instead?', file=sys.stderr)
             print(f'==> {filename} <==', file=sys.stderr)
             print(new_contents, end='')
         else:
@@ -806,7 +804,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument(
         '--diff-only', action='store_true',
-        help='Show unified diff instead of applying reordering.',
+        help='(Deprecated) Show unified diff instead of applying reordering.',
     )
     group.add_argument(
         '--print-only', action='store_true',
@@ -860,22 +858,35 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument(
         '--separate-relative', action='store_true',
         help=(
-            'Separate explicit relative (`from . import ...`) imports into a '
-            'separate block.'
+            '(Deprecated) Separate explicit relative (`from . import ...`) '
+            'imports into a separate block.'
         ),
     )
 
     parser.add_argument(
         '--separate-from-import', action='store_true',
         help=(
-            'Separate `from xx import xx` imports from `import xx` imports'
-            ' with a new line.'
+            '(Deprecated) Separate `from xx import xx` imports from '
+            '`import xx` imports with a new line.'
         ),
     )
 
     _add_version_options(parser)
 
     args = parser.parse_args(argv)
+
+    for option in (
+        'diff_only',
+        'print_only',
+        'separate_relative',
+        'separate_from_import',
+    ):
+        if getattr(args, option):
+            print(
+                f'warning: --{option.replace("_", "-")} is deprecated '
+                f'and will be removed',
+                file=sys.stderr,
+            )
 
     for k, v in REMOVALS.items():
         if args.min_version >= k:
