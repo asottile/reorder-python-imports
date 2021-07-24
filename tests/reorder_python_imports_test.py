@@ -738,8 +738,7 @@ def test_integration_main_stdout(tmpdir, capsys):
         'import reorder_python_imports\n'
     )
     assert err == (
-        f'!!! --print-only is deprecated\n'
-        f'!!! maybe use `-` instead?\n'
+        'warning: --print-only is deprecated and will be removed\n'
         f'==> {f} <==\n'
     )
 
@@ -1195,3 +1194,23 @@ def test_warning_pythonpath(tmpdir, capsys):
     out, err = capsys.readouterr()
     assert err == '$PYTHONPATH set, import order may be unexpected\n'
     assert out == ''
+
+
+@pytest.mark.parametrize(
+    'option',
+    (
+        '--diff-only',
+        '--print-only',
+        '--separate-relative',
+        '--separate-from-import',
+    ),
+)
+def test_deprecated_options(option, tmpdir, capsys):
+    f = tmpdir.join('f')
+    f.ensure()
+
+    assert not main((str(f), option))
+
+    out, err = capsys.readouterr()
+    assert out == ''
+    assert err == f'warning: {option} is deprecated and will be removed\n'
