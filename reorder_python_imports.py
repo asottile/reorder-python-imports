@@ -459,7 +459,7 @@ def fix_file_contents(
 
 def _fix_file(filename: str, args: argparse.Namespace) -> int:
     if filename == '-':
-        contents_bytes = getattr(sys.stdin, 'buffer', sys.stdin).read()
+        contents_bytes = sys.stdin.buffer.read()
     else:
         with open(filename, 'rb') as f:
             contents_bytes = f.read()
