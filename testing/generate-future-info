@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-import __future__
+from __future__ import annotations
 
+import __future__  # noreorder
 import collections
 import os.path
 import sys

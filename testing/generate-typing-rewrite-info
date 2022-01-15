@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import os
 import sys
 from collections import defaultdict
-from typing import Dict
-from typing import List
-from typing import Set
-from typing import Tuple
 
 import flake8_typing_imports
 import mypy_extensions
@@ -30,7 +28,7 @@ def main() -> int:
     )
 
     # some attrs are removed and then added back
-    min_contiguous_versions: Dict[str, flake8_typing_imports.Version] = {}
+    min_contiguous_versions: dict[str, flake8_typing_imports.Version] = {}
     for v, attrs in flake8_typing_imports.SYMBOLS:
         for removed in set(min_contiguous_versions) - attrs:
             del min_contiguous_versions[removed]
@@ -38,27 +36,27 @@ def main() -> int:
         for attr in attrs:
             min_contiguous_versions.setdefault(attr, v)
 
-    symbols: Dict[flake8_typing_imports.Version, Set[str]] = defaultdict(set)
+    symbols: dict[flake8_typing_imports.Version, set[str]] = defaultdict(set)
     for a, v in min_contiguous_versions.items():
         symbols[v].add(a)
 
     # --pyXX-plus assumes the min --pyXX so group symbols by their
     # rounded up major version
-    symbols_rounded_up: Dict[Tuple[int, int], Set[str]] = defaultdict(set)
+    symbols_rounded_up: dict[tuple[int, int], set[str]] = defaultdict(set)
     for v, attrs in sorted(symbols.items()):
         symbols_rounded_up[v.major, v.minor + int(v.patch != 0)] |= attrs
 
-    # combine 3.5 and 3.6 because this lib is 3.6.1+
+    # combine 3.5 and 3.6 because this lib is 3.7+
     symbols_rounded_up[(3, 6)] |= symbols_rounded_up.pop((3, 5))
 
-    deltas: Dict[Tuple[int, int], Set[str]] = defaultdict(set)
-    prev: Set[str] = set()
+    deltas: dict[tuple[int, int], set[str]] = defaultdict(set)
+    prev: set[str] = set()
     for v, attrs in sorted(symbols_rounded_up.items()):
         deltas[v] = attrs - prev
         prev = attrs
 
-    mypy_extensions_added: Dict[Tuple[int, int], List[str]] = {}
-    typing_extensions_added: Dict[Tuple[int, int], List[str]] = {}
+    mypy_extensions_added: dict[tuple[int, int], list[str]] = {}
+    typing_extensions_added: dict[tuple[int, int], list[str]] = {}
     for v, attrs in deltas.items():
         mypy_extensions_added[v] = sorted(attrs & mypy_extensions_all)
         typing_extensions_added[v] = sorted(attrs & typing_extensions_all)

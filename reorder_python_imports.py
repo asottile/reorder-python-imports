@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import ast
 import collections
@@ -10,16 +12,12 @@ import sys
 import tokenize
 from typing import Any
 from typing import Callable
-from typing import Dict
 from typing import Generator
 from typing import Iterable
 from typing import List
 from typing import NamedTuple
-from typing import Optional
 from typing import Sequence
-from typing import Set
 from typing import Tuple
-from typing import Union
 
 from aspy.refactor_imports.import_obj import AbstractImportObj
 from aspy.refactor_imports.import_obj import import_obj_from_str
@@ -44,9 +42,9 @@ Step = Callable[[Any], List[CodePartition]]
 
 class TopLevelImportVisitor(ast.NodeVisitor):
     def __init__(self) -> None:
-        self.top_level_import_line_numbers: List[int] = []
+        self.top_level_import_line_numbers: list[int] = []
 
-    def _visit_import(self, node: Union[ast.Import, ast.ImportFrom]) -> None:
+    def _visit_import(self, node: ast.Import | ast.ImportFrom) -> None:
         # If it's indented, we don't really care about the import.
         if node.col_offset == 0:
             self.top_level_import_line_numbers.append(node.lineno)
@@ -54,7 +52,7 @@ class TopLevelImportVisitor(ast.NodeVisitor):
     visit_Import = visit_ImportFrom = _visit_import
 
 
-def get_line_offsets_by_line_no(src: str) -> List[int]:
+def get_line_offsets_by_line_no(src: str) -> list[int]:
     # Padded so we can index with line number
     offsets = [0, 0]
     for line in src.splitlines(True):
@@ -66,7 +64,7 @@ def _partitions_to_src(partitions: Iterable[CodePartition]) -> str:
     return ''.join(part.src for part in partitions)
 
 
-def partition_source(src: str) -> List[CodePartition]:
+def partition_source(src: str) -> list[CodePartition]:
     """Partitions source into a list of `CodePartition`s for import
     refactoring.
     """
@@ -144,7 +142,7 @@ def partition_source(src: str) -> List[CodePartition]:
 
 def combine_trailing_code_chunks(
         partitions: Iterable[CodePartition],
-) -> List[CodePartition]:
+) -> list[CodePartition]:
     chunks = list(partitions)
 
     NON_COMBINABLE = (CodeType.IMPORT, CodeType.PRE_IMPORT_CODE)
@@ -159,7 +157,7 @@ def combine_trailing_code_chunks(
 
 def separate_comma_imports(
         partitions: Iterable[CodePartition],
-) -> List[CodePartition]:
+) -> list[CodePartition]:
     """Turns `import a, b` into `import a` and `import b`"""
     def _inner() -> Generator[CodePartition, None, None]:
         for partition in partitions:
@@ -180,8 +178,8 @@ def separate_comma_imports(
 
 def add_imports(
         partitions: Iterable[CodePartition],
-        to_add: Tuple[str, ...] = (),
-) -> List[CodePartition]:
+        to_add: tuple[str, ...] = (),
+) -> list[CodePartition]:
     partitions = list(partitions)
     if not _partitions_to_src(partitions).strip():
         return partitions
@@ -198,9 +196,9 @@ def add_imports(
 
 def remove_imports(
         partitions: Iterable[CodePartition],
-        to_remove: Tuple[str, ...] = (),
-) -> List[CodePartition]:
-    to_remove_imports: Set[AbstractImportObj] = set()
+        to_remove: tuple[str, ...] = (),
+) -> list[CodePartition]:
+    to_remove_imports: set[AbstractImportObj] = set()
     for s in to_remove:
         to_remove_imports.update(import_obj_from_str(s).split_imports())
 
@@ -215,14 +213,14 @@ def remove_imports(
     return list(_inner())
 
 
-def _mod_startswith(mod_parts: List[str], prefix_parts: List[str]) -> bool:
+def _mod_startswith(mod_parts: list[str], prefix_parts: list[str]) -> bool:
     return mod_parts[:len(prefix_parts)] == prefix_parts
 
 
 def replace_imports(
         partitions: Iterable[CodePartition],
         to_replace: Iterable[ImportToReplace] = (),
-) -> List[CodePartition]:
+) -> list[CodePartition]:
     def _inner() -> Generator[CodePartition, None, None]:
         for partition in partitions:
             if partition.code_type is CodeType.IMPORT:
@@ -276,9 +274,9 @@ def _module_to_base_modules(s: str) -> Generator[str, None, None]:
 
 def remove_duplicated_imports(
         partitions: Iterable[CodePartition],
-) -> List[CodePartition]:
-    seen: Set[AbstractImportObj] = set()
-    seen_module_names: Set[str] = set()
+) -> list[CodePartition]:
+    seen: set[AbstractImportObj] = set()
+    seen_module_names: set[str] = set()
     without_exact_duplicates = []
 
     for partition in partitions:
@@ -319,11 +317,11 @@ def apply_import_sorting(
         separate_relative: bool = False,
         separate_from_import: bool = False,
         **sort_kwargs: Any,
-) -> List[CodePartition]:
-    pre_import_code: List[CodePartition] = []
-    imports: List[CodePartition] = []
-    trash: List[CodePartition] = []
-    rest: List[CodePartition] = []
+) -> list[CodePartition]:
+    pre_import_code: list[CodePartition] = []
+    imports: list[CodePartition] = []
+    trash: list[CodePartition] = []
+    rest: list[CodePartition] = []
     for partition in partitions:
         {
             CodeType.PRE_IMPORT_CODE: pre_import_code,
@@ -349,7 +347,7 @@ def apply_import_sorting(
     relative_imports = []
 
     def _import_type_switches(
-            last_import_obj: Optional[AbstractImportObj],
+            last_import_obj: AbstractImportObj | None,
             import_obj: AbstractImportObj,
     ) -> bool:
         """Returns True if separate_from_import is True and  `import_obj` is
@@ -410,8 +408,8 @@ def apply_import_sorting(
 
 
 def _get_steps(
-        imports_to_add: Tuple[str, ...],
-        imports_to_remove: Tuple[str, ...],
+        imports_to_add: tuple[str, ...],
+        imports_to_remove: tuple[str, ...],
         imports_to_replace: Iterable[ImportToReplace],
         **sort_kwargs: Any,
 ) -> Generator[Step, None, None]:
@@ -437,8 +435,8 @@ def _most_common_line_ending(s: str) -> str:
 
 def fix_file_contents(
         contents: str,
-        imports_to_add: Tuple[str, ...] = (),
-        imports_to_remove: Tuple[str, ...] = (),
+        imports_to_add: tuple[str, ...] = (),
+        imports_to_remove: tuple[str, ...] = (),
         imports_to_replace: Iterable[ImportToReplace] = (),
         **sort_kwargs: Any,
 ) -> str:
@@ -518,8 +516,8 @@ def _report_diff(contents: str, new_contents: str, filename: str) -> None:
     print(diff, end='')
 
 
-REMOVALS: Dict[Tuple[int, ...], Set[str]] = collections.defaultdict(set)
-REPLACES: Dict[Tuple[int, ...], Set[str]] = collections.defaultdict(set)
+REMOVALS: dict[tuple[int, ...], set[str]] = collections.defaultdict(set)
+REPLACES: dict[tuple[int, ...], set[str]] = collections.defaultdict(set)
 
 REMOVALS[(3,)].add('from io import open')
 
@@ -795,7 +793,7 @@ def _validate_replace_import(s: str) -> ImportToReplace:
         return orig_mod.split('.'), new_mod.split('.'), attr
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'filenames', nargs='*',
