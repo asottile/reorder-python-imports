@@ -531,7 +531,7 @@ REMOVALS[(3, 7)].add('from __future__ import generator_stop')
 
 # GENERATED VIA generate-typing-rewrite-info
 # Using:
-#     flake8-typing-imports==1.10.1
+#     flake8-typing-imports==1.12.0
 #     mypy_extensions==0.4.3
 #     typing_extensions==3.7.4.3
 REPLACES[(3, 7)].update((
