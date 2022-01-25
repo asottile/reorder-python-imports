@@ -698,6 +698,15 @@ cases = pytest.mark.parametrize(
 
             id='noreorder not at beginning',
         ),
+        pytest.param(
+            'from __future__ import annotations\n'
+            '\n'
+            'import __future__\n',
+            'from __future__ import annotations\n'
+            '\n'
+            'import __future__\n',
+            id='__future__ from and import',
+        ),
     ),
 )
 
