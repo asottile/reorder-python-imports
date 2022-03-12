@@ -3,7 +3,6 @@ from __future__ import annotations
 import ast
 import io
 import os
-import subprocess
 import sys
 from unittest import mock
 
@@ -369,73 +368,6 @@ def test_apply_import_sorting_sorts_imports():
     ]
 
 
-def test_apply_import_sorting_sorts_imports_with_separate_relative():
-    assert apply_import_sorting(
-        [
-            # relative imports
-            CodePartition(CodeType.IMPORT, 'from .main import main\n'),
-            # local imports
-            CodePartition(
-                CodeType.IMPORT, 'from reorder_python_imports import main\n',
-            ),
-            CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
-            # site-package imports
-            CodePartition(CodeType.IMPORT, 'from six import text_type\n'),
-            CodePartition(CodeType.IMPORT, 'import aspy\n'),
-            # System imports (out of order)
-            CodePartition(CodeType.IMPORT, 'from os import path\n'),
-            CodePartition(CodeType.IMPORT, 'import os\n'),
-        ],
-        separate_relative=True,
-    ) == [
-        CodePartition(CodeType.IMPORT, 'import os\n'),
-        CodePartition(CodeType.IMPORT, 'from os import path\n'),
-        CodePartition(CodeType.NON_CODE, '\n'),
-        CodePartition(CodeType.IMPORT, 'import aspy\n'),
-        CodePartition(CodeType.IMPORT, 'from six import text_type\n'),
-        CodePartition(CodeType.NON_CODE, '\n'),
-        CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
-        CodePartition(
-            CodeType.IMPORT, 'from reorder_python_imports import main\n',
-        ),
-        CodePartition(CodeType.NON_CODE, '\n'),
-        CodePartition(CodeType.IMPORT, 'from .main import main\n'),
-    ]
-
-
-def test_apply_import_sorting_sorts_imports_with_separate_from_import():
-    assert apply_import_sorting(
-        [
-            # local imports
-            CodePartition(
-                CodeType.IMPORT, 'from reorder_python_imports import main\n',
-            ),
-            CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
-            # site-package imports
-            CodePartition(CodeType.IMPORT, 'from six import text_type\n'),
-            CodePartition(CodeType.IMPORT, 'import aspy\n'),
-            # System imports (out of order)
-            CodePartition(CodeType.IMPORT, 'from os import path\n'),
-            CodePartition(CodeType.IMPORT, 'import os\n'),
-        ],
-        separate_from_import=True,
-    ) == [
-        CodePartition(CodeType.IMPORT, 'import os\n'),
-        CodePartition(CodeType.NON_CODE, '\n'),
-        CodePartition(CodeType.IMPORT, 'from os import path\n'),
-        CodePartition(CodeType.NON_CODE, '\n'),
-        CodePartition(CodeType.IMPORT, 'import aspy\n'),
-        CodePartition(CodeType.NON_CODE, '\n'),
-        CodePartition(CodeType.IMPORT, 'from six import text_type\n'),
-        CodePartition(CodeType.NON_CODE, '\n'),
-        CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
-        CodePartition(CodeType.NON_CODE, '\n'),
-        CodePartition(
-            CodeType.IMPORT, 'from reorder_python_imports import main\n',
-        ),
-    ]
-
-
 def test_apply_import_sorting_sorts_imports_with_application_module():
     assert apply_import_sorting(
         [
@@ -721,71 +653,12 @@ def test_integration_main(s, expected, tmpdir):
     test_file = tmpdir.join('test.py')
     test_file.write(s)
 
-    # Check return value with --diff-only
-    retv_diff = main((str(test_file), '--diff-only'))
-    assert retv_diff == int(s != expected)
-
     retv = main((str(test_file),))
     # Check return value
     assert retv == int(s != expected)
 
     # Check the contents rewritten
     assert test_file.read() == expected
-
-
-def test_integration_main_stdout(tmpdir, capsys):
-    f = tmpdir.join('f.py')
-    f.write(
-        'import reorder_python_imports\n'
-        'import os\n'
-        'import six\n',
-    )
-    ret = main(('--print-only', f.strpath))
-    assert ret == 1
-    out, err = capsys.readouterr()
-    assert out == (
-        'import os\n\n'
-        'import six\n\n'
-        'import reorder_python_imports\n'
-    )
-    assert err == (
-        'warning: --print-only is deprecated and will be removed\n'
-        f'==> {f} <==\n'
-    )
-
-
-def _apply_patch(patch, origfile=None):
-    args = ('patch', origfile) if origfile else ('patch',)
-    patch_proc = subprocess.Popen(args, stdin=subprocess.PIPE)
-    patch_proc.communicate(patch.encode())
-    assert patch_proc.returncode == 0
-
-
-def test_does_not_reorder_with_diff_only(in_tmpdir, capsys):
-    test_file = in_tmpdir.join('test.py')
-    test_file.write('import sys\nimport os\n')
-
-    retv = main((str(test_file), '--diff-only'))
-    assert retv == 1
-    assert test_file.read() == 'import sys\nimport os\n'
-    patch, _ = capsys.readouterr()
-    _apply_patch(patch)
-    assert test_file.read() == 'import os\nimport sys\n'
-
-
-def test_patch_multiple_files_no_eol(in_tmpdir, capsys):
-    test1file = in_tmpdir.join('test1.py')
-    test2file = in_tmpdir.join('test2.py')
-    # Intentionally no EOL
-    test1file.write('import sys\nimport os')
-    test2file.write('import sys\nimport os\n')
-
-    ret = main((str(test1file), str(test2file), '--diff-only'))
-    assert ret == 1
-    patch, _ = capsys.readouterr()
-    _apply_patch(patch)
-    assert test1file.read() == 'import os\nimport sys\n'
-    assert test2file.read() == 'import os\nimport sys\n'
 
 
 @pytest.fixture
@@ -827,101 +700,6 @@ def test_additional_directories_integration(in_tmpdir):
         'import nottesting\n'
         'import nottests\n'
     )
-
-
-def test_separate_relative_integration(in_tmpdir):
-    in_tmpdir.join('foo/__init__.py').ensure()
-    in_tmpdir.join('foo/bar/__init__.py').ensure()
-
-    in_tmpdir.join('foo/foo.py').write(
-        'import thirdparty\n'
-        'from foo import bar\n'
-        'from . import bar\n',
-    )
-
-    main(('foo/foo.py',))
-    assert in_tmpdir.join('foo/foo.py').read() == (
-        'import thirdparty\n'
-        '\n'
-        'from . import bar\n'
-        'from foo import bar\n'
-    )
-
-    main(('foo/foo.py', '--separate-relative'))
-    assert in_tmpdir.join('foo/foo.py').read() == (
-        'import thirdparty\n'
-        '\n'
-        'from foo import bar\n'
-        '\n'
-        'from . import bar\n'
-    )
-
-
-def test_separate_from_import_integration(in_tmpdir):
-    in_tmpdir.join('foo/__init__.py').ensure()
-    in_tmpdir.join('foo/bar/__init__.py').ensure()
-
-    in_tmpdir.join('foo/foo.py').write(
-        'import thirdparty\n'
-        'import foo.bar\n'
-        'from foo import bar\n'
-        'from . import bar\n',
-    )
-
-    main(('foo/foo.py',))
-    assert in_tmpdir.join('foo/foo.py').read() == (
-        'import thirdparty\n'
-        '\n'
-        'import foo.bar\n'
-        'from . import bar\n'
-        'from foo import bar\n'
-    )
-
-    main(('foo/foo.py', '--separate-from-import'))
-    assert in_tmpdir.join('foo/foo.py').read() == (
-        'import thirdparty\n'
-        '\n'
-        'import foo.bar\n'
-        '\n'
-        'from . import bar\n'
-        'from foo import bar\n'
-    )
-
-
-def test_separate_relative_and_separate_from_next_to_from_import():
-    ret = fix_file_contents(
-        'from reorder_python_imports import y\n'
-        'from . import z\n',
-        separate_from_import=True,
-        separate_relative=True,
-    )
-    assert ret == (
-        'from reorder_python_imports import y\n'
-        '\n'
-        'from . import z\n'
-    )
-
-
-def test_separate_relative_and_separate_from_next_to_import_import():
-    ret = fix_file_contents(
-        'import thirdparty\n'
-        'from . import bar\n',
-        separate_from_import=True,
-        separate_relative=True,
-    )
-    assert ret == (
-        'import thirdparty\n'
-        '\n'
-        'from . import bar\n'
-    )
-
-
-def test_separate_relative_when_only_relative_imports_are_present():
-    src = (
-        'from . import bar\n'
-        'from . import foo\n'
-    )
-    assert fix_file_contents(src, separate_relative=True) == src
 
 
 def test_fix_crlf():
@@ -1153,27 +931,6 @@ def test_main_stdin_no_fix(capsys):
     assert out == 'import os\nimport sys\n'
 
 
-def test_main_stdin_diff_only(tmpdir, capsys):
-    tf = tmpdir.join('t.py')
-    input_b = b'import sys\nimport os\n'
-    tf.write(input_b)
-    stdin = io.TextIOWrapper(io.BytesIO(input_b), 'UTF-8')
-    with mock.patch.object(sys, 'stdin', stdin):
-        assert main(('-', '--diff-only')) == 1
-    out, _ = capsys.readouterr()
-    _apply_patch(out, origfile=tf)
-    assert tf.read() == 'import os\nimport sys\n'
-
-
-def test_main_stdin_diff_only_no_changes(capsys):
-    input_b = b'import os\nimport sys\n'
-    stdin = io.TextIOWrapper(io.BytesIO(input_b), 'UTF-8')
-    with mock.patch.object(sys, 'stdin', stdin):
-        assert main(('-', '--diff-only')) == 0
-    out, err = capsys.readouterr()
-    assert out == ''
-
-
 def test_main_exit_code_multiple_files(tmpdir):
     f1 = tmpdir.join('t1.py')
     f1.write('import os,sys\n')
@@ -1205,23 +962,3 @@ def test_warning_pythonpath(tmpdir, capsys):
     out, err = capsys.readouterr()
     assert err == '$PYTHONPATH set, import order may be unexpected\n'
     assert out == ''
-
-
-@pytest.mark.parametrize(
-    'option',
-    (
-        '--diff-only',
-        '--print-only',
-        '--separate-relative',
-        '--separate-from-import',
-    ),
-)
-def test_deprecated_options(option, tmpdir, capsys):
-    f = tmpdir.join('f')
-    f.ensure()
-
-    assert not main((str(f), option))
-
-    out, err = capsys.readouterr()
-    assert out == ''
-    assert err == f'warning: {option} is deprecated and will be removed\n'
