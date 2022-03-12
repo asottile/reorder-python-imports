@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import ast
 import collections
-import difflib
 import enum
 import functools
 import io
@@ -314,8 +313,6 @@ def remove_duplicated_imports(
 
 def apply_import_sorting(
         partitions: Iterable[CodePartition],
-        separate_relative: bool = False,
-        separate_from_import: bool = False,
         **sort_kwargs: Any,
 ) -> list[CodePartition]:
     pre_import_code: list[CodePartition] = []
@@ -344,51 +341,14 @@ def apply_import_sorting(
     }
 
     new_imports = []
-    relative_imports = []
-
-    def _import_type_switches(
-            last_import_obj: AbstractImportObj | None,
-            import_obj: AbstractImportObj,
-    ) -> bool:
-        """Returns True if separate_from_import is True and  `import_obj` is
-        :class:`aspy.refactor_imports.import_obj.FromImport`
-        and ``last_import_obj`` is
-        :class:`aspy.refactor_imports.import_obj.ImportImport`
-        """
-        return (
-            separate_from_import and
-            last_import_obj is not None and
-            type(last_import_obj) is not type(import_obj)
-        )
 
     sorted_blocks = sort(import_obj_to_partition.keys(), **sort_kwargs)
     for block in sorted_blocks:
-        last_import_obj = None
-
         for import_obj in block:
-            if separate_relative and import_obj.is_explicit_relative:
-                relative_imports.append(import_obj_to_partition[import_obj])
-            else:
-                if _import_type_switches(last_import_obj, import_obj):
-                    new_imports.append(CodePartition(CodeType.NON_CODE, '\n'))
+            new_imports.append(import_obj_to_partition[import_obj])
 
-                last_import_obj = import_obj
-                new_imports.append(import_obj_to_partition[import_obj])
+        new_imports.append(CodePartition(CodeType.NON_CODE, '\n'))
 
-        # There's an edge case if both --separate-relative and
-        # --separate-from-import are passed where the first-party imports
-        # will *all* be explicit relative imports and sorted into the special
-        # block.  In this case, we don't want the first-party block to just
-        # be a single newline.  See #23
-        if last_import_obj is not None:
-            new_imports.append(CodePartition(CodeType.NON_CODE, '\n'))
-
-    # There is another edge case if --separate-relative is passed while all the
-    # imports are relative. In that case we don't want an empty new line at the
-    # beginning of the block. We should insert the new line only if there are
-    # additional imports.  See #134
-    if relative_imports and len(relative_imports) != len(imports):
-        relative_imports.insert(0, CodePartition(CodeType.NON_CODE, '\n'))
     # XXX: I want something like [x].join(...) (like str join) but for now
     # this works
     if new_imports:
@@ -404,7 +364,7 @@ def apply_import_sorting(
     else:
         rest = []
 
-    return pre_import_code + new_imports + relative_imports + rest
+    return pre_import_code + new_imports + rest
 
 
 def _get_steps(
@@ -475,45 +435,20 @@ def _fix_file(filename: str, args: argparse.Namespace) -> int:
         imports_to_add=args.add_import,
         imports_to_remove=args.remove_import,
         imports_to_replace=args.replace_import,
-        separate_relative=args.separate_relative,
-        separate_from_import=args.separate_from_import,
         application_directories=args.application_directories.split(':'),
         unclassifiable_application_modules=args.unclassifiable,
     )
     if filename == '-':
-        if args.diff_only:
-            _report_diff(contents, new_contents, '')
-        else:
-            print(new_contents, end='')
+        print(new_contents, end='')
     elif contents != new_contents:
-        if args.diff_only:
-            _report_diff(contents, new_contents, filename)
-        elif args.print_only:
-            print(f'==> {filename} <==', file=sys.stderr)
-            print(new_contents, end='')
-        else:
-            print(f'Reordering imports in {filename}', file=sys.stderr)
-            with open(filename, 'wb') as f:
-                f.write(new_contents.encode())
+        print(f'Reordering imports in {filename}', file=sys.stderr)
+        with open(filename, 'wb') as f:
+            f.write(new_contents.encode())
 
     if args.exit_zero_even_if_changed:
         return 0
     else:
         return contents != new_contents
-
-
-def _report_diff(contents: str, new_contents: str, filename: str) -> None:
-    diff = ''.join(
-        difflib.unified_diff(
-            io.StringIO(contents).readlines(),
-            io.StringIO(new_contents).readlines(),
-            fromfile=filename, tofile=filename,
-        ),
-    )
-    if diff and not diff.endswith('\n'):
-        diff += '\n\\ No newline at end of file\n'
-
-    print(diff, end='')
 
 
 REMOVALS: dict[tuple[int, ...], set[str]] = collections.defaultdict(set)
@@ -806,19 +741,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         'filenames', nargs='*',
         help='If `-` is given, reads from stdin and writes to stdout.',
     )
-    group = parser.add_mutually_exclusive_group(required=False)
-    group.add_argument(
-        '--diff-only', action='store_true',
-        help='(Deprecated) Show unified diff instead of applying reordering.',
-    )
-    group.add_argument(
-        '--print-only', action='store_true',
-        help=(
-            '(Deprecated) '
-            'Print the output of a single file after reordering. '
-            'Consider using `-` for the filename instead.'
-        ),
-    )
     parser.add_argument('--exit-zero-even-if-changed', action='store_true')
     parser.add_argument(
         '--add-import', action='append', default=[], type=_validate_import,
@@ -860,38 +782,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
 
-    parser.add_argument(
-        '--separate-relative', action='store_true',
-        help=(
-            '(Deprecated) Separate explicit relative (`from . import ...`) '
-            'imports into a separate block.'
-        ),
-    )
-
-    parser.add_argument(
-        '--separate-from-import', action='store_true',
-        help=(
-            '(Deprecated) Separate `from xx import xx` imports from '
-            '`import xx` imports with a new line.'
-        ),
-    )
-
     _add_version_options(parser)
 
     args = parser.parse_args(argv)
-
-    for option in (
-        'diff_only',
-        'print_only',
-        'separate_relative',
-        'separate_from_import',
-    ):
-        if getattr(args, option):
-            print(
-                f'warning: --{option.replace("_", "-")} is deprecated '
-                f'and will be removed',
-                file=sys.stderr,
-            )
 
     for k, v in REMOVALS.items():
         if args.min_version >= k:
