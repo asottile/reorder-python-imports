@@ -47,16 +47,11 @@ ImportToReplace = Tuple[List[str], List[str], str]
 Step = Callable[[Any], List[CodePartition]]
 
 
-class TopLevelImportVisitor(ast.NodeVisitor):
-    def __init__(self) -> None:
-        self.top_level_import_line_numbers: list[int] = []
-
-    def _visit_import(self, node: ast.Import | ast.ImportFrom) -> None:
-        # If it's indented, we don't really care about the import.
-        if node.col_offset == 0:
-            self.top_level_import_line_numbers.append(node.lineno)
-
-    visit_Import = visit_ImportFrom = _visit_import
+def _src_to_import_lines(src: str) -> set[int]:
+    return {
+        node.lineno for node in ast.parse(src).body
+        if isinstance(node, (ast.Import, ast.ImportFrom))
+    }
 
 
 def get_line_offsets_by_line_no(src: str) -> list[int]:
@@ -75,9 +70,7 @@ def partition_source(src: str) -> list[CodePartition]:
     """Partitions source into a list of `CodePartition`s for import
     refactoring.
     """
-    ast_obj = ast.parse(src.encode())
-    visitor = TopLevelImportVisitor()
-    visitor.visit(ast_obj)
+    top_level_import_line_numbers = _src_to_import_lines(src)
 
     line_offsets = get_line_offsets_by_line_no(src)
 
@@ -101,7 +94,7 @@ def partition_source(src: str) -> list[CodePartition]:
             elif not seen_import and token_type == tokenize.STRING:
                 pending_chunk_type = CodeType.PRE_IMPORT_CODE
                 possible_ending_tokens = TERMINATES_DOCSTRING
-            elif scol == 0 and srow in visitor.top_level_import_line_numbers:
+            elif scol == 0 and srow in top_level_import_line_numbers:
                 seen_import = True
                 pending_chunk_type = CodeType.IMPORT
                 possible_ending_tokens = TERMINATES_IMPORT

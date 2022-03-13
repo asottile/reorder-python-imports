@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import io
 import os
 import sys
@@ -8,6 +7,7 @@ from unittest import mock
 
 import pytest
 from reorder_python_imports import _mod_startswith
+from reorder_python_imports import _src_to_import_lines
 from reorder_python_imports import apply_import_sorting
 from reorder_python_imports import CodePartition
 from reorder_python_imports import CodeType
@@ -17,7 +17,6 @@ from reorder_python_imports import main
 from reorder_python_imports import partition_source
 from reorder_python_imports import remove_duplicated_imports
 from reorder_python_imports import separate_comma_imports
-from reorder_python_imports import TopLevelImportVisitor
 
 
 @pytest.fixture
@@ -172,47 +171,40 @@ def test_partition_source_comment_lines():
     ]
 
 
-def _src_to_import_lines(src):
-    ast_obj = ast.parse(src)
-    visitor = TopLevelImportVisitor()
-    visitor.visit(ast_obj)
-    return visitor.top_level_import_line_numbers
-
-
 def test_import_visitor_trivial():
-    assert _src_to_import_lines(b'') == []
+    assert _src_to_import_lines('') == set()
 
 
 def test_import_visitor_simple_import():
     ret = _src_to_import_lines(
-        b'import foo\n'
-        b'#something else\n',
+        'import foo\n'
+        '#something else\n',
     )
-    assert ret == [1]
+    assert ret == {1}
 
 
 def test_import_visitor_simple_import_2():
     ret = _src_to_import_lines(
-        b'# -*- coding: utf-8 -*-\n'
-        b'import os\n',
+        '# -*- coding: utf-8 -*-\n'
+        'import os\n',
     )
-    assert ret == [2]
+    assert ret == {2}
 
 
 def test_import_visitor_multiple_imports():
     ret = _src_to_import_lines(
-        b'import os\n'
-        b'import sys\n',
+        'import os\n'
+        'import sys\n',
     )
-    assert ret == [1, 2]
+    assert ret == {1, 2}
 
 
 def test_import_visitor_ignores_indented_imports():
     ret = _src_to_import_lines(
-        b'if True:\n'
-        b'    import os\n',
+        'if True:\n'
+        '    import os\n',
     )
-    assert ret == []
+    assert ret == set()
 
 
 def test_line_offsets_trivial():
