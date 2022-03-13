@@ -23,6 +23,14 @@ from aspy.refactor_imports.import_obj import import_obj_from_str
 from aspy.refactor_imports.import_obj import ImportImport
 from aspy.refactor_imports.sort import sort
 
+# this is a performance hack.  see https://bugs.python.org/issue43014
+if (  # pragma: no branch
+        sys.version_info < (3, 10) and
+        callable(getattr(tokenize, '_compile', None))
+):  # pragma: <3.10 cover
+    from functools import lru_cache
+    tokenize._compile = lru_cache()(tokenize._compile)  # type: ignore
+
 CodeType = enum.Enum('CodeType', 'PRE_IMPORT_CODE IMPORT NON_CODE CODE')
 
 
