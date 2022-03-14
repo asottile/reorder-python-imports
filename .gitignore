@@ -2,8 +2,4 @@
 *.py[co]
 .coverage
 .tox
-/.mypy_cache
-/.pytest_cache
-/venv*
-coverage-html
 dist
