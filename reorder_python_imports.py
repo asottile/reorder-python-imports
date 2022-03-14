@@ -4,7 +4,6 @@ import argparse
 import ast
 import collections
 import enum
-import functools
 import io
 import os
 import sys
@@ -368,21 +367,6 @@ def apply_import_sorting(
     return pre_import_code + new_imports + rest
 
 
-def _get_steps(
-        imports_to_add: tuple[str, ...],
-        imports_to_remove: tuple[str, ...],
-        imports_to_replace: Iterable[ImportToReplace],
-        **sort_kwargs: Any,
-) -> Generator[Step, None, None]:
-    yield combine_trailing_code_chunks
-    yield functools.partial(add_imports, to_add=imports_to_add)
-    yield separate_comma_imports
-    yield functools.partial(remove_imports, to_remove=imports_to_remove)
-    yield functools.partial(replace_imports, to_replace=imports_to_replace)
-    yield remove_duplicated_imports
-    yield functools.partial(apply_import_sorting, **sort_kwargs)
-
-
 def _most_common_line_ending(s: str) -> str:
     # initialize in case there's no line endings at all
     counts = collections.Counter({'\n': 0})
@@ -406,13 +390,14 @@ def fix_file_contents(
     contents = contents.replace('\r\n', '\n').replace('\r', '\n')
 
     partitioned = partition_source(contents)
-    for step in _get_steps(
-            imports_to_add,
-            imports_to_remove,
-            imports_to_replace,
-            **sort_kwargs,
-    ):
-        partitioned = step(partitioned)
+    partitioned = combine_trailing_code_chunks(partitioned)
+    partitioned = add_imports(partitioned, to_add=imports_to_add)
+    partitioned = separate_comma_imports(partitioned)
+    partitioned = remove_imports(partitioned, to_remove=imports_to_remove)
+    partitioned = replace_imports(partitioned, to_replace=imports_to_replace)
+    partitioned = remove_duplicated_imports(partitioned)
+    partitioned = apply_import_sorting(partitioned, **sort_kwargs)
+
     return _partitions_to_src(partitioned).replace('\n', nl)
 
 
