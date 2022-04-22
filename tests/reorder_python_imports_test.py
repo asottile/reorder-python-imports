@@ -745,6 +745,13 @@ def test_py_options(tmpdir, opt, expected):
     assert f.read() == expected
 
 
+def test_py3_plus_unsixes_imports_rename_directly_imported_module(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from six.moves.urllib import parse\n')
+    assert main((str(f), '--py3-plus'))
+    assert f.read() == 'from urllib import parse\n'
+
+
 def test_py3_plus_unsixes_imports_rename_module(tmpdir):
     f = tmpdir.join('f.py')
     f.write('from six.moves.urllib.parse import quote_plus\n')
