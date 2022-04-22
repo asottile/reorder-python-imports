@@ -524,12 +524,45 @@ def test_replace_module_imported_asname():
     assert ret == 'import queue as Queue\n'
 
 
-def test_replace_module__imported_as_from():
+def test_replace_module_imported_with_nested_replacement():
     ret = fix_file_contents(
         'from six.moves.urllib import parse\n',
         imports_to_replace=[(['six', 'moves', 'urllib', 'parse'], ['urllib', 'parse'], '')],
     )
     assert ret == 'from urllib import parse\n'
+
+
+def test_replace_module_imported_with_nested_replacement_asname():
+    ret = fix_file_contents(
+        'from six.moves.urllib import parse as urllib_parse\n',
+        imports_to_replace=[(['six', 'moves', 'urllib', 'parse'], ['urllib', 'parse'], '')],
+    )
+    assert ret == 'from urllib import parse as urllib_parse\n'
+
+
+@pytest.mark.xfail(reason='TODO')
+def test_replace_module_imported_with_nested_replacement_asname2():
+    ret = fix_file_contents(
+        'from six.moves.urllib import parse as urllib_parse\n',
+        imports_to_replace=[(['six', 'moves', 'urllib', 'parse'], ['urllib', 'parse2'], '')],
+    )
+    assert ret == 'from urllib import parse2 as urllib_parse\n'
+
+
+def test_replace_module_skips_attr_specific_rules():
+    ret = fix_file_contents(
+        'from libone import util\n',
+        imports_to_replace=[(['libone', 'util'], ['libtwo', 'util'], 'is_valid')],
+    )
+    assert ret == 'from libone import util\n'
+
+
+def test_replace_module_skips_nonmatching_rules():
+    ret = fix_file_contents(
+        'from libthree import util\n',
+        imports_to_replace=[(['libone', 'util'], ['libtwo', 'util'], '')],
+    )
+    assert ret == 'from libthree import util\n'
 
 
 cases = pytest.mark.parametrize(

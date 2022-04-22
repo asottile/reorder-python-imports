@@ -246,8 +246,8 @@ def replace_imports(
                         break
                     # from a.b.c import d => from c import d
                     elif (
-                        not attr and
                         (mod_parts + [symbol] == orig_mod) and
+                        not attr and
                         len(new_mod) > 1 and
                         symbol == new_mod[-1]
                     ):
