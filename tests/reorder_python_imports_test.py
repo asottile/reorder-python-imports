@@ -524,6 +524,14 @@ def test_replace_module_imported_asname():
     assert ret == 'import queue as Queue\n'
 
 
+def test_replace_module__imported_as_from():
+    ret = fix_file_contents(
+        'from six.moves.urllib import parse\n',
+        imports_to_replace=[(['six', 'moves', 'urllib', 'parse'], ['urllib', 'parse'], '')],
+    )
+    assert ret == 'from urllib import parse\n'
+
+
 cases = pytest.mark.parametrize(
     ('s', 'expected'),
     (
@@ -743,13 +751,6 @@ def test_py_options(tmpdir, opt, expected):
     )
     main((str(f), opt))
     assert f.read() == expected
-
-
-def test_py3_plus_unsixes_imports_rename_directly_imported_module(tmpdir):
-    f = tmpdir.join('f.py')
-    f.write('from six.moves.urllib import parse\n')
-    assert main((str(f), '--py3-plus'))
-    assert f.read() == 'from urllib import parse\n'
 
 
 def test_py3_plus_unsixes_imports_rename_module(tmpdir):
