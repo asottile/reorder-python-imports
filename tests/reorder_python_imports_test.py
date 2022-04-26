@@ -540,7 +540,6 @@ def test_replace_module_imported_with_nested_replacement_asname():
     assert ret == 'from urllib import parse as urllib_parse\n'
 
 
-@pytest.mark.xfail(reason='TODO')
 def test_replace_module_imported_with_nested_replacement_asname2():
     ret = fix_file_contents(
         'from six.moves.urllib import parse as urllib_parse\n',

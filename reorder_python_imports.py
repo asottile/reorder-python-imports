@@ -249,9 +249,12 @@ def replace_imports(
                         (mod_parts + [symbol] == orig_mod) and
                         not attr and
                         len(new_mod) > 1 and
-                        symbol == new_mod[-1]
+                        (asname or symbol == new_mod[-1])
                     ):
                         import_obj.ast_obj.module = '.'.join(new_mod[:-1])
+                        import_obj.ast_obj.names = [
+                            ast.alias(name=new_mod[-1], asname=asname),
+                        ]
                         new_src = import_obj.to_text()
                         yield partition._replace(src=new_src)
                         break
