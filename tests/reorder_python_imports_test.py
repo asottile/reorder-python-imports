@@ -527,7 +527,9 @@ def test_replace_module_imported_asname():
 def test_replace_module_imported_with_nested_replacement():
     ret = fix_file_contents(
         'from six.moves.urllib import parse\n',
-        imports_to_replace=[(['six', 'moves', 'urllib', 'parse'], ['urllib', 'parse'], '')],
+        imports_to_replace=[
+            (['six', 'moves', 'urllib', 'parse'], ['urllib', 'parse'], ''),
+        ],
     )
     assert ret == 'from urllib import parse\n'
 
@@ -535,15 +537,19 @@ def test_replace_module_imported_with_nested_replacement():
 def test_replace_module_imported_with_nested_replacement_asname():
     ret = fix_file_contents(
         'from six.moves.urllib import parse as urllib_parse\n',
-        imports_to_replace=[(['six', 'moves', 'urllib', 'parse'], ['urllib', 'parse'], '')],
+        imports_to_replace=[
+            (['six', 'moves', 'urllib', 'parse'], ['urllib', 'parse'], ''),
+        ],
     )
     assert ret == 'from urllib import parse as urllib_parse\n'
 
 
-def test_replace_module_imported_with_nested_replacement_asname2():
+def test_replace_module_imported_with_nested_renamed_replacement_asname():
     ret = fix_file_contents(
         'from six.moves.urllib import parse as urllib_parse\n',
-        imports_to_replace=[(['six', 'moves', 'urllib', 'parse'], ['urllib', 'parse2'], '')],
+        imports_to_replace=[
+            (['six', 'moves', 'urllib', 'parse'], ['urllib', 'parse2'], ''),
+        ],
     )
     assert ret == 'from urllib import parse2 as urllib_parse\n'
 
@@ -551,7 +557,9 @@ def test_replace_module_imported_with_nested_replacement_asname2():
 def test_replace_module_skips_attr_specific_rules():
     ret = fix_file_contents(
         'from libone import util\n',
-        imports_to_replace=[(['libone', 'util'], ['libtwo', 'util'], 'is_valid')],
+        imports_to_replace=[
+            (['libone', 'util'], ['libtwo', 'util'], 'is_valid'),
+        ],
     )
     assert ret == 'from libone import util\n'
 
