@@ -244,6 +244,20 @@ def replace_imports(
                         new_src = import_obj.to_text()
                         yield partition._replace(src=new_src)
                         break
+                    # from a.b.c import d => from c import d
+                    elif (
+                            (mod_parts + [symbol] == orig_mod) and
+                            not attr and
+                            len(new_mod) > 1 and
+                            (asname or symbol == new_mod[-1])
+                    ):
+                        import_obj.ast_obj.module = '.'.join(new_mod[:-1])
+                        import_obj.ast_obj.names = [
+                            ast.alias(name=new_mod[-1], asname=asname),
+                        ]
+                        new_src = import_obj.to_text()
+                        yield partition._replace(src=new_src)
+                        break
                     # from x.y import z => import z
                     elif (
                             not attr and
