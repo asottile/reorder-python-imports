@@ -23,9 +23,7 @@ def main() -> int:
     mypy_extensions_all = frozenset(
         a for a in dir(mypy_extensions) if a != 'Any'
     )
-    typing_extensions_all = frozenset(
-        typing_extensions.__all__,  # type: ignore
-    )
+    typing_extensions_all = frozenset(typing_extensions.__all__)
 
     # some attrs are removed and then added back
     min_contiguous_versions: dict[str, flake8_typing_imports.Version] = {}
