@@ -697,6 +697,36 @@ REPLACES[(3,)].update((
 ))
 # END GENERATED
 
+# GENERATED VIA generate-collections-info
+REPLACES[(3,)].update((
+    'collections=collections.abc:AsyncGenerator',
+    'collections=collections.abc:AsyncIterable',
+    'collections=collections.abc:AsyncIterator',
+    'collections=collections.abc:Awaitable',
+    'collections=collections.abc:ByteString',
+    'collections=collections.abc:Callable',
+    'collections=collections.abc:Collection',
+    'collections=collections.abc:Container',
+    'collections=collections.abc:Coroutine',
+    'collections=collections.abc:Generator',
+    'collections=collections.abc:Hashable',
+    'collections=collections.abc:ItemsView',
+    'collections=collections.abc:Iterable',
+    'collections=collections.abc:Iterator',
+    'collections=collections.abc:KeysView',
+    'collections=collections.abc:Mapping',
+    'collections=collections.abc:MappingView',
+    'collections=collections.abc:MutableMapping',
+    'collections=collections.abc:MutableSequence',
+    'collections=collections.abc:MutableSet',
+    'collections=collections.abc:Reversible',
+    'collections=collections.abc:Sequence',
+    'collections=collections.abc:Set',
+    'collections=collections.abc:Sized',
+    'collections=collections.abc:ValuesView',
+))
+# END GENERATED
+
 
 def _add_version_options(parser: argparse.ArgumentParser) -> None:
     versions = sorted(REMOVALS.keys() | REPLACES.keys())

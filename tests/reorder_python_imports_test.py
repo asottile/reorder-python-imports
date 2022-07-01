@@ -857,6 +857,13 @@ def test_py3_plus_does_not_rewrite_mock_version_info(tmpdir):
     assert f.read() == 'from mock import version_info\n'
 
 
+def test_py3_plus_rewrites_collections_abc(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from collections import Mapping\n')
+    assert main((str(f), '--py3-plus'))
+    assert f.read() == 'from collections.abc import Mapping\n'
+
+
 def test_py3_plus_removes_python_future_imports(tmpdir):
     f = tmpdir.join('f.py')
     f.write('from builtins import str\n')
