@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import collections.abc
+import os.path
+import sys
+
+
+def main() -> int:
+    print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
+    print('REPLACES[(3,)].update((')
+    for k in sorted(collections.abc.__all__):
+        print(f"    'collections=collections.abc:{k}',")
+    print('))')
+    print('# END GENERATED')
+
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
