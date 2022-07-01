@@ -4,6 +4,7 @@ import argparse
 import ast
 import collections
 import enum
+import functools
 import io
 import os
 import sys
@@ -193,23 +194,32 @@ def add_imports(
     ]
 
 
+@functools.lru_cache(maxsize=None)
+def _remove_key(
+        s: str,
+) -> tuple[str, str | None] | tuple[str, str, str | None]:
+    node = ast.parse(s).body[0]
+    if isinstance(node, ast.Import):
+        alias, = node.names
+        return (alias.name, alias.asname)
+    elif isinstance(node, ast.ImportFrom):
+        alias, = node.names
+        return (f'{node.level * "."}{node.module}', alias.name, alias.asname)
+    else:
+        raise AssertionError(f'unreachable {s}')
+
+
 def remove_imports(
         partitions: Iterable[CodePartition],
-        to_remove: tuple[str, ...] = (),
+        to_remove: set[tuple[str, str | None] | tuple[str, str, str | None]],
 ) -> list[CodePartition]:
-    to_remove_imports: set[AbstractImportObj] = set()
-    for s in to_remove:
-        to_remove_imports.update(import_obj_from_str(s).split_imports())
-
-    def _inner() -> Generator[CodePartition, None, None]:
-        for partition in partitions:
-            if (
-                    partition.code_type is not CodeType.IMPORT or
-                    import_obj_from_str(partition.src) not in to_remove_imports
-            ):
-                yield partition
-
-    return list(_inner())
+    return [
+        partition for partition in partitions
+        if (
+            partition.code_type is not CodeType.IMPORT or
+            _remove_key(partition.src) not in to_remove
+        )
+    ]
 
 
 def _mod_startswith(mod_parts: list[str], prefix_parts: list[str]) -> bool:
@@ -394,9 +404,10 @@ def _most_common_line_ending(s: str) -> str:
 
 def fix_file_contents(
         contents: str,
-        imports_to_add: tuple[str, ...] = (),
-        imports_to_remove: tuple[str, ...] = (),
-        imports_to_replace: Iterable[ImportToReplace] = (),
+        *,
+        to_add: tuple[str, ...] = (),
+        to_remove: set[tuple[str, str | None] | tuple[str, str, str | None]],
+        to_replace: Iterable[ImportToReplace],
         **sort_kwargs: Any,
 ) -> str:
     # internally use `'\n` as the newline and normalize at the very end
@@ -405,17 +416,21 @@ def fix_file_contents(
 
     partitioned = partition_source(contents)
     partitioned = combine_trailing_code_chunks(partitioned)
-    partitioned = add_imports(partitioned, to_add=imports_to_add)
+    partitioned = add_imports(partitioned, to_add=to_add)
     partitioned = separate_comma_imports(partitioned)
-    partitioned = remove_imports(partitioned, to_remove=imports_to_remove)
-    partitioned = replace_imports(partitioned, to_replace=imports_to_replace)
+    partitioned = remove_imports(partitioned, to_remove=to_remove)
+    partitioned = replace_imports(partitioned, to_replace=to_replace)
     partitioned = remove_duplicated_imports(partitioned)
     partitioned = apply_import_sorting(partitioned, **sort_kwargs)
 
     return _partitions_to_src(partitioned).replace('\n', nl)
 
 
-def _fix_file(filename: str, args: argparse.Namespace) -> int:
+def _fix_file(
+        filename: str,
+        args: argparse.Namespace,
+        to_remove: set[tuple[str, str | None] | tuple[str, str, str | None]],
+) -> int:
     if filename == '-':
         contents_bytes = sys.stdin.buffer.read()
     else:
@@ -432,9 +447,9 @@ def _fix_file(filename: str, args: argparse.Namespace) -> int:
 
     new_contents = fix_file_contents(
         contents,
-        imports_to_add=args.add_import,
-        imports_to_remove=args.remove_import,
-        imports_to_replace=args.replace_import,
+        to_add=args.add_import,
+        to_remove=to_remove,
+        to_replace=args.replace_import,
         application_directories=args.application_directories.split(':'),
         unclassifiable_application_modules=args.unclassifiable,
     )
@@ -816,9 +831,17 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
 
+    to_remove = set()
+
+    for s in args.remove_import:
+        for obj in import_obj_from_str(s).split_imports():
+            to_remove.add(_remove_key(obj.to_text()))
+
     for k, v in REMOVALS.items():
         if args.min_version >= k:
-            args.remove_import.extend(v)
+            for s in v:
+                for obj in import_obj_from_str(s).split_imports():
+                    to_remove.add(_remove_key(obj.to_text()))
 
     for k, v in REPLACES.items():
         if args.min_version >= k:
@@ -832,7 +855,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     retv = 0
     for filename in args.filenames:
-        retv |= _fix_file(filename, args)
+        retv |= _fix_file(filename, args, to_remove=to_remove)
     return retv
 
 

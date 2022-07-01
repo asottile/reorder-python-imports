@@ -395,21 +395,27 @@ def test_apply_import_sorting_removes_padding_if_only_imports():
 def test_add_import_trivial():
     assert fix_file_contents(
         '',
-        imports_to_add=('from __future__ import absolute_import',),
+        to_add=('from __future__ import absolute_import',),
+        to_remove=set(),
+        to_replace=(),
     ) == ''
 
 
 def test_add_import_import_already_there():
     assert fix_file_contents(
         'from __future__ import absolute_import\n',
-        imports_to_add=('from __future__ import absolute_import',),
+        to_add=('from __future__ import absolute_import',),
+        to_remove=set(),
+        to_replace=(),
     ) == 'from __future__ import absolute_import\n'
 
 
 def test_add_import_not_there():
     assert fix_file_contents(
         'import os',
-        imports_to_add=('from __future__ import absolute_import',),
+        to_add=('from __future__ import absolute_import',),
+        to_remove=set(),
+        to_replace=(),
     ) == (
         'from __future__ import absolute_import\n'
         '\n'
@@ -420,7 +426,9 @@ def test_add_import_not_there():
 def test_does_not_put_before_leading_comment():
     assert fix_file_contents(
         '# -*- coding: UTF-8 -*-',
-        imports_to_add=('from __future__ import absolute_import',),
+        to_add=('from __future__ import absolute_import',),
+        to_remove=set(),
+        to_replace=(),
     ) == (
         '# -*- coding: UTF-8 -*-\n'
         'from __future__ import absolute_import\n'
@@ -430,14 +438,18 @@ def test_does_not_put_before_leading_comment():
 def test_remove_import_trivial():
     assert fix_file_contents(
         '',
-        imports_to_remove=('from __future__ import with_statement',),
+        to_add=(),
+        to_remove={('__future__', 'with_statement', None)},
+        to_replace=(),
     ) == ''
 
 
 def test_remove_import_import_not_there():
     assert fix_file_contents(
         'import os\n',
-        imports_to_remove=('from __future__ import with_statement',),
+        to_add=(),
+        to_remove={('__future__', 'with_statement', None)},
+        to_replace=(),
     ) == 'import os\n'
 
 
@@ -445,7 +457,9 @@ def test_remove_imports_actually_removes():
     assert fix_file_contents(
         'from __future__ import with_statement\n\n'
         'import os\n',
-        imports_to_remove=('from  __future__ import with_statement',),
+        to_add=(),
+        to_remove={('__future__', 'with_statement', None)},
+        to_replace=(),
     ) == 'import os\n'
 
 
@@ -466,8 +480,10 @@ def test_replace_imports_noop():
     ret = fix_file_contents(
         'import os\n'
         'import sys\n',
+        to_add=(),
+        to_remove=set(),
         # import imports are not rewritten
-        imports_to_replace=[(['os'], ['fail'], '')],
+        to_replace=[(['os'], ['fail'], '')],
     )
     assert ret == 'import os\nimport sys\n'
 
@@ -475,7 +491,9 @@ def test_replace_imports_noop():
 def test_replace_imports_basic_from():
     ret = fix_file_contents(
         'from foo import bar\n',
-        imports_to_replace=[(['foo'], ['baz'], '')],
+        to_add=(),
+        to_remove=set(),
+        to_replace=[(['foo'], ['baz'], '')],
     )
     assert ret == 'from baz import bar\n'
 
@@ -483,7 +501,9 @@ def test_replace_imports_basic_from():
 def test_replace_imports_from_does_not_replace_name():
     ret = fix_file_contents(
         'from foo import bar\n',
-        imports_to_replace=[(['foo', 'bar'], ['baz', 'hi'], '')],
+        to_add=(),
+        to_remove=set(),
+        to_replace=[(['foo', 'bar'], ['baz', 'hi'], '')],
     )
     assert ret == 'from foo import bar\n'
 
@@ -491,7 +511,9 @@ def test_replace_imports_from_does_not_replace_name():
 def test_replace_imports_from_asname():
     ret = fix_file_contents(
         'from foo import bar as baz\n',
-        imports_to_replace=[(['foo'], ['baz'], '')],
+        to_add=(),
+        to_remove=set(),
+        to_replace=[(['foo'], ['baz'], '')],
     )
     assert ret == 'from baz import bar as baz\n'
 
@@ -500,7 +522,9 @@ def test_replace_imports_specific_attribute_name():
     ret = fix_file_contents(
         'from foo import bar\n'
         'from foo import baz\n',
-        imports_to_replace=[(['foo'], ['aaa'], 'bar')],
+        to_add=(),
+        to_remove=set(),
+        to_replace=[(['foo'], ['aaa'], 'bar')],
     )
     assert ret == (
         'from aaa import bar\n'
@@ -511,7 +535,9 @@ def test_replace_imports_specific_attribute_name():
 def test_replace_module_imported():
     ret = fix_file_contents(
         'from six.moves import queue\n',
-        imports_to_replace=[(['six', 'moves', 'queue'], ['queue'], '')],
+        to_add=(),
+        to_remove=set(),
+        to_replace=[(['six', 'moves', 'queue'], ['queue'], '')],
     )
     assert ret == 'import queue\n'
 
@@ -519,7 +545,9 @@ def test_replace_module_imported():
 def test_replace_module_imported_asname():
     ret = fix_file_contents(
         'from six.moves import queue as Queue\n',
-        imports_to_replace=[(['six', 'moves', 'queue'], ['queue'], '')],
+        to_add=(),
+        to_remove=set(),
+        to_replace=[(['six', 'moves', 'queue'], ['queue'], '')],
     )
     assert ret == 'import queue as Queue\n'
 
@@ -527,7 +555,9 @@ def test_replace_module_imported_asname():
 def test_replace_module_imported_with_nested_replacement():
     ret = fix_file_contents(
         'from six.moves.urllib import parse\n',
-        imports_to_replace=[
+        to_add=(),
+        to_remove=set(),
+        to_replace=[
             (['six', 'moves', 'urllib', 'parse'], ['urllib', 'parse'], ''),
         ],
     )
@@ -537,7 +567,9 @@ def test_replace_module_imported_with_nested_replacement():
 def test_replace_module_imported_with_nested_replacement_asname():
     ret = fix_file_contents(
         'from six.moves.urllib import parse as urllib_parse\n',
-        imports_to_replace=[
+        to_add=(),
+        to_remove=set(),
+        to_replace=[
             (['six', 'moves', 'urllib', 'parse'], ['urllib', 'parse'], ''),
         ],
     )
@@ -547,7 +579,9 @@ def test_replace_module_imported_with_nested_replacement_asname():
 def test_replace_module_imported_with_nested_renamed_replacement_asname():
     ret = fix_file_contents(
         'from six.moves.urllib import parse as urllib_parse\n',
-        imports_to_replace=[
+        to_add=(),
+        to_remove=set(),
+        to_replace=[
             (['six', 'moves', 'urllib', 'parse'], ['urllib', 'parse2'], ''),
         ],
     )
@@ -557,7 +591,9 @@ def test_replace_module_imported_with_nested_renamed_replacement_asname():
 def test_replace_module_skips_attr_specific_rules():
     ret = fix_file_contents(
         'from libone import util\n',
-        imports_to_replace=[
+        to_add=(),
+        to_remove=set(),
+        to_replace=[
             (['libone', 'util'], ['libtwo', 'util'], 'is_valid'),
         ],
     )
@@ -567,7 +603,9 @@ def test_replace_module_skips_attr_specific_rules():
 def test_replace_module_skips_nonmatching_rules():
     ret = fix_file_contents(
         'from libthree import util\n',
-        imports_to_replace=[(['libone', 'util'], ['libtwo', 'util'], '')],
+        to_add=(),
+        to_remove=set(),
+        to_replace=[(['libone', 'util'], ['libtwo', 'util'], '')],
     )
     assert ret == 'from libthree import util\n'
 
@@ -685,7 +723,8 @@ cases = pytest.mark.parametrize(
 
 @cases
 def test_fix_file_contents(s, expected):
-    assert fix_file_contents(s) == expected
+    ret = fix_file_contents(s, to_add=(), to_remove=set(), to_replace=())
+    assert ret == expected
 
 
 @cases
@@ -749,7 +788,8 @@ def test_fix_crlf():
         'import sys\r\n'
         'x = 1\r\n'
     )
-    assert fix_file_contents(s) == s
+    ret = fix_file_contents(s, to_add=(), to_remove=set(), to_replace=())
+    assert ret == s
 
 
 def test_fix_cr():
@@ -759,7 +799,8 @@ def test_fix_cr():
         'import sys\r'
         'x = 1\r'
     )
-    assert fix_file_contents(s) == s
+    ret = fix_file_contents(s, to_add=(), to_remove=set(), to_replace=())
+    assert ret == s
 
 
 @pytest.mark.parametrize(
