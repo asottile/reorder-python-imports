@@ -6,6 +6,7 @@ import sys
 from unittest import mock
 
 import pytest
+from classify_imports import Settings
 from reorder_python_imports import _mod_startswith
 from reorder_python_imports import _src_to_import_lines
 from reorder_python_imports import apply_import_sorting
@@ -367,7 +368,9 @@ def test_apply_import_sorting_sorts_imports_with_application_module():
             CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
             CodePartition(CodeType.IMPORT, 'import third_party\n'),
         ],
-        unclassifiable_application_modules=['_c_module'],
+        settings=Settings(
+            unclassifiable_application_modules=('_c_module',),
+        ),
     ) == [
         CodePartition(CodeType.IMPORT, 'import third_party\n'),
         CodePartition(CodeType.NON_CODE, '\n'),
@@ -439,7 +442,7 @@ def test_remove_import_trivial():
     assert fix_file_contents(
         '',
         to_add=(),
-        to_remove={('__future__', 'with_statement', None)},
+        to_remove={('__future__', 'with_statement', '')},
         to_replace=(),
     ) == ''
 
@@ -448,7 +451,7 @@ def test_remove_import_import_not_there():
     assert fix_file_contents(
         'import os\n',
         to_add=(),
-        to_remove={('__future__', 'with_statement', None)},
+        to_remove={('__future__', 'with_statement', '')},
         to_replace=(),
     ) == 'import os\n'
 
@@ -458,7 +461,7 @@ def test_remove_imports_actually_removes():
         'from __future__ import with_statement\n\n'
         'import os\n',
         to_add=(),
-        to_remove={('__future__', 'with_statement', None)},
+        to_remove={('__future__', 'with_statement', '')},
         to_replace=(),
     ) == 'import os\n'
 

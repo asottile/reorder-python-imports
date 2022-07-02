@@ -4,7 +4,6 @@ import argparse
 import ast
 import collections
 import enum
-import functools
 import io
 import os
 import sys
@@ -18,10 +17,11 @@ from typing import NamedTuple
 from typing import Sequence
 from typing import Tuple
 
-from aspy.refactor_imports.import_obj import AbstractImportObj
-from aspy.refactor_imports.import_obj import import_obj_from_str
-from aspy.refactor_imports.import_obj import ImportImport
-from aspy.refactor_imports.sort import sort
+from classify_imports import Import
+from classify_imports import import_obj_from_str
+from classify_imports import ImportFrom
+from classify_imports import Settings
+from classify_imports import sort
 
 # this is a performance hack.  see https://bugs.python.org/issue43014
 if (  # pragma: no branch
@@ -162,12 +162,10 @@ def separate_comma_imports(
     def _inner() -> Generator[CodePartition, None, None]:
         for partition in partitions:
             if partition.code_type is CodeType.IMPORT:
-                import_obj = import_obj_from_str(partition.src)
-                if import_obj.has_multiple_imports:
-                    for new_import_obj in import_obj.split_imports():
-                        yield CodePartition(
-                            CodeType.IMPORT, new_import_obj.to_text(),
-                        )
+                obj = import_obj_from_str(partition.src)
+                if obj.is_multiple:
+                    for new_obj in obj.split():
+                        yield CodePartition(CodeType.IMPORT, str(new_obj))
                 else:
                     yield partition
             else:
@@ -194,21 +192,6 @@ def add_imports(
     ]
 
 
-@functools.lru_cache(maxsize=None)
-def _remove_key(
-        s: str,
-) -> tuple[str, str | None] | tuple[str, str, str | None]:
-    node = ast.parse(s).body[0]
-    if isinstance(node, ast.Import):
-        alias, = node.names
-        return (alias.name, alias.asname)
-    elif isinstance(node, ast.ImportFrom):
-        alias, = node.names
-        return (f'{node.level * "."}{node.module}', alias.name, alias.asname)
-    else:
-        raise AssertionError(f'unreachable {s}')
-
-
 def remove_imports(
         partitions: Iterable[CodePartition],
         to_remove: set[tuple[str, str | None] | tuple[str, str, str | None]],
@@ -217,7 +200,7 @@ def remove_imports(
         partition for partition in partitions
         if (
             partition.code_type is not CodeType.IMPORT or
-            _remove_key(partition.src) not in to_remove
+            import_obj_from_str(partition.src).key not in to_remove
         )
     ]
 
@@ -236,13 +219,13 @@ def replace_imports(
                 import_obj = import_obj_from_str(partition.src)
 
                 # cannot rewrite import-imports: makes undefined names
-                if isinstance(import_obj, ImportImport):
+                if isinstance(import_obj, Import):
                     yield partition
                     continue
 
-                mod_parts = import_obj.import_statement.module.split('.')
-                symbol = import_obj.import_statement.symbol
-                asname = import_obj.import_statement.asname
+                mod_parts = import_obj.module.split('.')
+                symbol = import_obj.key.symbol
+                asname = import_obj.key.asname
 
                 for orig_mod, new_mod, attr in to_replace:
                     if (
@@ -250,9 +233,12 @@ def replace_imports(
                             (not attr and _mod_startswith(mod_parts, orig_mod))
                     ):
                         mod_parts[:len(orig_mod)] = new_mod
-                        import_obj.ast_obj.module = '.'.join(mod_parts)
-                        new_src = import_obj.to_text()
-                        yield partition._replace(src=new_src)
+                        node = ast.ImportFrom(
+                            module='.'.join(mod_parts),
+                            names=import_obj.node.names,
+                            level=import_obj.node.level,
+                        )
+                        yield partition._replace(src=str(ImportFrom(node)))
                         break
                     # from a.b.c import d => from c import d
                     elif (
@@ -261,12 +247,12 @@ def replace_imports(
                             len(new_mod) > 1 and
                             (asname or symbol == new_mod[-1])
                     ):
-                        import_obj.ast_obj.module = '.'.join(new_mod[:-1])
-                        import_obj.ast_obj.names = [
-                            ast.alias(name=new_mod[-1], asname=asname),
-                        ]
-                        new_src = import_obj.to_text()
-                        yield partition._replace(src=new_src)
+                        node = ast.ImportFrom(
+                            module='.'.join(new_mod[:-1]),
+                            names=[ast.alias(name=new_mod[-1], asname=asname)],
+                            level=import_obj.node.level,
+                        )
+                        yield partition._replace(src=str(ImportFrom(node)))
                         break
                     # from x.y import z => import z
                     elif (
@@ -298,7 +284,7 @@ def _module_to_base_modules(s: str) -> Generator[str, None, None]:
 def remove_duplicated_imports(
         partitions: Iterable[CodePartition],
 ) -> list[CodePartition]:
-    seen: set[AbstractImportObj] = set()
+    seen: set[Import | ImportFrom] = set()
     seen_module_names: set[str] = set()
     without_exact_duplicates = []
 
@@ -308,13 +294,11 @@ def remove_duplicated_imports(
             if import_obj not in seen:
                 seen.add(import_obj)
                 if (
-                        isinstance(import_obj, ImportImport) and
-                        not import_obj.import_statement.asname
+                        isinstance(import_obj, Import) and
+                        not import_obj.key.asname
                 ):
                     seen_module_names.update(
-                        _module_to_base_modules(
-                            import_obj.import_statement.module,
-                        ),
+                        _module_to_base_modules(import_obj.module),
                     )
                 without_exact_duplicates.append(partition)
         else:
@@ -325,9 +309,9 @@ def remove_duplicated_imports(
         if partition.code_type is CodeType.IMPORT:
             import_obj = import_obj_from_str(partition.src)
             if (
-                    isinstance(import_obj, ImportImport) and
-                    not import_obj.import_statement.asname and
-                    import_obj.import_statement.module in seen_module_names
+                    isinstance(import_obj, Import) and
+                    not import_obj.key.asname and
+                    import_obj.key.module in seen_module_names
             ):
                 continue
         out_partitions.append(partition)
@@ -337,7 +321,7 @@ def remove_duplicated_imports(
 
 def apply_import_sorting(
         partitions: Iterable[CodePartition],
-        **sort_kwargs: Any,
+        settings: Settings = Settings(),
 ) -> list[CodePartition]:
     pre_import_code: list[CodePartition] = []
     imports: list[CodePartition] = []
@@ -366,7 +350,7 @@ def apply_import_sorting(
 
     new_imports = []
 
-    sorted_blocks = sort(import_obj_to_partition.keys(), **sort_kwargs)
+    sorted_blocks = sort(import_obj_to_partition.keys(), settings=settings)
     for block in sorted_blocks:
         for import_obj in block:
             new_imports.append(import_obj_to_partition[import_obj])
@@ -408,7 +392,7 @@ def fix_file_contents(
         to_add: tuple[str, ...] = (),
         to_remove: set[tuple[str, str | None] | tuple[str, str, str | None]],
         to_replace: Iterable[ImportToReplace],
-        **sort_kwargs: Any,
+        settings: Settings = Settings(),
 ) -> str:
     # internally use `'\n` as the newline and normalize at the very end
     nl = _most_common_line_ending(contents)
@@ -421,7 +405,7 @@ def fix_file_contents(
     partitioned = remove_imports(partitioned, to_remove=to_remove)
     partitioned = replace_imports(partitioned, to_replace=to_replace)
     partitioned = remove_duplicated_imports(partitioned)
-    partitioned = apply_import_sorting(partitioned, **sort_kwargs)
+    partitioned = apply_import_sorting(partitioned, settings=settings)
 
     return _partitions_to_src(partitioned).replace('\n', nl)
 
@@ -429,7 +413,9 @@ def fix_file_contents(
 def _fix_file(
         filename: str,
         args: argparse.Namespace,
+        *,
         to_remove: set[tuple[str, str | None] | tuple[str, str, str | None]],
+        settings: Settings = Settings(),
 ) -> int:
     if filename == '-':
         contents_bytes = sys.stdin.buffer.read()
@@ -450,8 +436,7 @@ def _fix_file(
         to_add=args.add_import,
         to_remove=to_remove,
         to_replace=args.replace_import,
-        application_directories=args.application_directories.split(':'),
-        unclassifiable_application_modules=args.unclassifiable,
+        settings=settings,
     )
     if filename == '-':
         print(new_contents, end='')
@@ -831,17 +816,17 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
 
-    to_remove = set()
-
-    for s in args.remove_import:
-        for obj in import_obj_from_str(s).split_imports():
-            to_remove.add(_remove_key(obj.to_text()))
-
-    for k, v in REMOVALS.items():
-        if args.min_version >= k:
-            for s in v:
-                for obj in import_obj_from_str(s).split_imports():
-                    to_remove.add(_remove_key(obj.to_text()))
+    to_remove = {
+        obj.key
+        for s in args.remove_import
+        for obj in import_obj_from_str(s).split()
+    } | {
+        obj.key
+        for k, v in REMOVALS.items()
+        if args.min_version >= k
+        for s in v
+        for obj in import_obj_from_str(s).split()
+    }
 
     for k, v in REPLACES.items():
         if args.min_version >= k:
@@ -853,9 +838,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         sys.stderr.write('$PYTHONPATH set, import order may be unexpected\n')
         sys.stderr.flush()
 
+    settings = Settings(
+        application_directories=tuple(args.application_directories.split(':')),
+        unclassifiable_application_modules=frozenset(args.unclassifiable),
+    )
+
     retv = 0
     for filename in args.filenames:
-        retv |= _fix_file(filename, args, to_remove=to_remove)
+        retv |= _fix_file(
+            filename,
+            args,
+            to_remove=to_remove,
+            settings=settings,
+        )
     return retv
 
 
