@@ -7,7 +7,6 @@ from unittest import mock
 
 import pytest
 from classify_imports import Settings
-from reorder_python_imports import _mod_startswith
 from reorder_python_imports import _src_to_import_lines
 from reorder_python_imports import apply_import_sorting
 from reorder_python_imports import CodePartition
@@ -465,19 +464,6 @@ def test_remove_imports_actually_removes():
         to_remove={('__future__', 'with_statement', '')},
         to_replace=Replacements.make([]),
     ) == 'import os\n'
-
-
-@pytest.mark.parametrize(
-    ('s', 'prefix', 'expected'),
-    (
-        (['foo'], ['bar'], False),
-        (['foo'], ['foo'], True),
-        (['foo', 'bar'], ['foo'], True),
-        (['foo_mod'], ['foo'], False),
-    ),
-)
-def test_mod_startswith(s, prefix, expected):
-    assert _mod_startswith(s, prefix) is expected
 
 
 def test_replace_imports_noop():
