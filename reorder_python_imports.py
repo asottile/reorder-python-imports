@@ -8,11 +8,8 @@ import io
 import os
 import sys
 import tokenize
-from typing import Any
-from typing import Callable
 from typing import Generator
 from typing import Iterable
-from typing import List
 from typing import NamedTuple
 from typing import Sequence
 
@@ -41,8 +38,6 @@ class CodePartition(NamedTuple):
 TERMINATES_COMMENT = frozenset((tokenize.NL, tokenize.ENDMARKER))
 TERMINATES_DOCSTRING = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
 TERMINATES_IMPORT = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
-
-Step = Callable[[Any], List[CodePartition]]
 
 
 def _src_to_import_lines(src: str) -> set[int]:
@@ -201,10 +196,6 @@ def remove_imports(
             import_obj_from_str(partition.src).key not in to_remove
         )
     ]
-
-
-def _mod_startswith(mod_parts: list[str], prefix_parts: list[str]) -> bool:
-    return mod_parts[:len(prefix_parts)] == prefix_parts
 
 
 class Replacements(NamedTuple):
