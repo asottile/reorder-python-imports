@@ -15,7 +15,6 @@ from typing import Iterable
 from typing import List
 from typing import NamedTuple
 from typing import Sequence
-from typing import Tuple
 
 from classify_imports import Import
 from classify_imports import import_obj_from_str
@@ -43,7 +42,6 @@ TERMINATES_COMMENT = frozenset((tokenize.NL, tokenize.ENDMARKER))
 TERMINATES_DOCSTRING = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
 TERMINATES_IMPORT = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
 
-ImportToReplace = Tuple[List[str], List[str], str]
 Step = Callable[[Any], List[CodePartition]]
 
 
@@ -209,9 +207,40 @@ def _mod_startswith(mod_parts: list[str], prefix_parts: list[str]) -> bool:
     return mod_parts[:len(prefix_parts)] == prefix_parts
 
 
+class Replacements(NamedTuple):
+    # (orig_mod, attr) => new_mod
+    exact: dict[tuple[str, str], str]
+    # orig_mod => new_mod (no attr)
+    mods: dict[str, str]
+
+    @classmethod
+    def make(cls, args: list[tuple[str, str, str]]) -> Replacements:
+        exact = {}
+        mods = {}
+
+        for mod_from, mod_to, attr in args:
+            if attr:
+                exact[mod_from, attr] = mod_to
+            else:
+                mod_from_base, _, mod_from_attr = mod_from.rpartition('.')
+                mod_to_base, _, mod_to_attr = mod_to.rpartition('.')
+
+                # for example `six.moves.urllib.request=urllib.request`
+                if (
+                        mod_from_attr and
+                        mod_to_base and
+                        mod_from_attr == mod_to_attr
+                ):
+                    exact[mod_from_base, mod_from_attr] = mod_to_base
+
+                mods[mod_from] = mod_to
+
+        return cls(exact=exact, mods=mods)
+
+
 def replace_imports(
         partitions: Iterable[CodePartition],
-        to_replace: Iterable[ImportToReplace] = (),
+        to_replace: Replacements,
 ) -> list[CodePartition]:
     def _inner() -> Generator[CodePartition, None, None]:
         for partition in partitions:
@@ -223,50 +252,59 @@ def replace_imports(
                     yield partition
                     continue
 
-                mod_parts = import_obj.module.split('.')
-                symbol = import_obj.key.symbol
-                asname = import_obj.key.asname
+                mod, symbol, asname = import_obj.key
+                mod_symbol = f'{mod}.{symbol}'
 
-                for orig_mod, new_mod, attr in to_replace:
-                    if (
-                            (attr == symbol and mod_parts == orig_mod) or
-                            (not attr and _mod_startswith(mod_parts, orig_mod))
-                    ):
-                        mod_parts[:len(orig_mod)] = new_mod
+                # from a.b.c import d => from e.f.g import d
+                if (mod, symbol) in to_replace.exact:
+                    node = ast.ImportFrom(
+                        module=to_replace.exact[mod, symbol],
+                        names=import_obj.node.names,
+                        level=0,
+                    )
+                    yield partition._replace(src=str(ImportFrom(node)))
+                # from a.b.c import d as e => from f import g as e
+                # from a.b.c import d as e => import f as e
+                # from a.b import c => import c
+                elif (
+                        mod_symbol in to_replace.mods and
+                        (asname or to_replace.mods[mod_symbol] == symbol)
+                ):
+                    new_mod = to_replace.mods[mod_symbol]
+                    new_mod, dot, new_sym = new_mod.rpartition('.')
+                    if new_mod:
                         node = ast.ImportFrom(
-                            module='.'.join(mod_parts),
-                            names=import_obj.node.names,
-                            level=import_obj.node.level,
+                            module=new_mod,
+                            names=[ast.alias(new_sym, asname)],
+                            level=0,
                         )
                         yield partition._replace(src=str(ImportFrom(node)))
-                        break
-                    # from a.b.c import d => from c import d
-                    elif (
-                            (mod_parts + [symbol] == orig_mod) and
-                            not attr and
-                            len(new_mod) > 1 and
-                            (asname or symbol == new_mod[-1])
-                    ):
-                        node = ast.ImportFrom(
-                            module='.'.join(new_mod[:-1]),
-                            names=[ast.alias(name=new_mod[-1], asname=asname)],
-                            level=import_obj.node.level,
-                        )
-                        yield partition._replace(src=str(ImportFrom(node)))
-                        break
-                    # from x.y import z => import z
-                    elif (
-                            not attr and
-                            mod_parts + [symbol] == orig_mod and
-                            len(new_mod) == 1
-                    ):
-                        mod_name, = new_mod
-                        asname_src = f' as {asname}' if asname else ''
-                        new_src = f'import {mod_name}{asname_src}\n'
-                        yield partition._replace(src=new_src)
-                        break
+                    elif not dot:
+                        node_i = ast.Import(names=[ast.alias(new_sym, asname)])
+                        yield partition._replace(src=str(Import(node_i)))
+                    else:
+                        yield partition
+                # from a.b.c import d => from e import d
+                elif mod in to_replace.mods:
+                    node = ast.ImportFrom(
+                        module=to_replace.mods[mod],
+                        names=import_obj.node.names,
+                        level=0,
+                    )
+                    yield partition._replace(src=str(ImportFrom(node)))
                 else:
-                    yield partition
+                    for mod_name in _module_to_base_modules(mod):
+                        if mod_name in to_replace.mods:
+                            new_mod = to_replace.mods[mod_name]
+                            node = ast.ImportFrom(
+                                module=f'{new_mod}{mod[len(mod_name):]}',
+                                names=import_obj.node.names,
+                                level=0,
+                            )
+                            yield partition._replace(src=str(ImportFrom(node)))
+                            break
+                    else:
+                        yield partition
             else:
                 yield partition
     return list(_inner())
@@ -391,7 +429,7 @@ def fix_file_contents(
         *,
         to_add: tuple[str, ...] = (),
         to_remove: set[tuple[str, str | None] | tuple[str, str, str | None]],
-        to_replace: Iterable[ImportToReplace],
+        to_replace: Replacements,
         settings: Settings = Settings(),
 ) -> str:
     # internally use `'\n` as the newline and normalize at the very end
@@ -415,6 +453,7 @@ def _fix_file(
         args: argparse.Namespace,
         *,
         to_remove: set[tuple[str, str | None] | tuple[str, str, str | None]],
+        to_replace: Replacements,
         settings: Settings = Settings(),
 ) -> int:
     if filename == '-':
@@ -435,7 +474,7 @@ def _fix_file(
         contents,
         to_add=args.add_import,
         to_remove=to_remove,
-        to_replace=args.replace_import,
+        to_replace=to_replace,
         settings=settings,
     )
     if filename == '-':
@@ -753,7 +792,7 @@ def _validate_import(s: str) -> str:
         return s
 
 
-def _validate_replace_import(s: str) -> ImportToReplace:
+def _validate_replace_import(s: str) -> tuple[str, str, str]:
     mods, _, attr = s.partition(':')
     try:
         orig_mod, new_mod = mods.split('=')
@@ -762,7 +801,7 @@ def _validate_replace_import(s: str) -> ImportToReplace:
             f'expected `orig.mod=new.mod` or `orig.mod=new.mod:attr`: {s!r}',
         )
     else:
-        return orig_mod.split('.'), new_mod.split('.'), attr
+        return orig_mod, new_mod, attr
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -834,6 +873,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 _validate_replace_import(replace_s) for replace_s in v
             )
 
+    to_replace = Replacements.make(args.replace_import)
+
     if os.environ.get('PYTHONPATH'):
         sys.stderr.write('$PYTHONPATH set, import order may be unexpected\n')
         sys.stderr.flush()
@@ -849,6 +890,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             filename,
             args,
             to_remove=to_remove,
+            to_replace=to_replace,
             settings=settings,
         )
     return retv
