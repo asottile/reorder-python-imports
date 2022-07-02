@@ -40,13 +40,6 @@ TERMINATES_DOCSTRING = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
 TERMINATES_IMPORT = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
 
 
-def _src_to_import_lines(src: str) -> set[int]:
-    return {
-        node.lineno for node in ast.parse(src).body
-        if isinstance(node, (ast.Import, ast.ImportFrom))
-    }
-
-
 def get_line_offsets_by_line_no(src: str) -> list[int]:
     # Padded so we can index with line number
     offsets = [0, 0]
@@ -63,8 +56,6 @@ def partition_source(src: str) -> list[CodePartition]:
     """Partitions source into a list of `CodePartition`s for import
     refactoring.
     """
-    top_level_import_line_numbers = _src_to_import_lines(src)
-
     line_offsets = get_line_offsets_by_line_no(src)
 
     chunks = []
@@ -87,7 +78,11 @@ def partition_source(src: str) -> list[CodePartition]:
             elif not seen_import and token_type == tokenize.STRING:
                 pending_chunk_type = CodeType.PRE_IMPORT_CODE
                 possible_ending_tokens = TERMINATES_DOCSTRING
-            elif scol == 0 and srow in top_level_import_line_numbers:
+            elif (
+                    scol == 0 and
+                    token_type == tokenize.NAME and
+                    token_text in {'from', 'import'}
+            ):
                 seen_import = True
                 pending_chunk_type = CodeType.IMPORT
                 possible_ending_tokens = TERMINATES_IMPORT
