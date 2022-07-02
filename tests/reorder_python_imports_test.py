@@ -7,7 +7,6 @@ from unittest import mock
 
 import pytest
 from classify_imports import Settings
-from reorder_python_imports import _src_to_import_lines
 from reorder_python_imports import apply_import_sorting
 from reorder_python_imports import CodePartition
 from reorder_python_imports import CodeType
@@ -170,42 +169,6 @@ def test_partition_source_comment_lines():
         CodePartition(CodeType.PRE_IMPORT_CODE, '# hello world\n'),
         CodePartition(CodeType.IMPORT, 'import os\n'),
     ]
-
-
-def test_import_visitor_trivial():
-    assert _src_to_import_lines('') == set()
-
-
-def test_import_visitor_simple_import():
-    ret = _src_to_import_lines(
-        'import foo\n'
-        '#something else\n',
-    )
-    assert ret == {1}
-
-
-def test_import_visitor_simple_import_2():
-    ret = _src_to_import_lines(
-        '# -*- coding: utf-8 -*-\n'
-        'import os\n',
-    )
-    assert ret == {2}
-
-
-def test_import_visitor_multiple_imports():
-    ret = _src_to_import_lines(
-        'import os\n'
-        'import sys\n',
-    )
-    assert ret == {1, 2}
-
-
-def test_import_visitor_ignores_indented_imports():
-    ret = _src_to_import_lines(
-        'if True:\n'
-        '    import os\n',
-    )
-    assert ret == set()
 
 
 def test_line_offsets_trivial():
