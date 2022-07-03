@@ -346,6 +346,15 @@ def test_add_import_trivial():
     ) == ''
 
 
+def test_add_imports_empty_file():
+    assert fix_file_contents(
+        '\n\n',
+        to_add=('from __future__ import absolute_import',),
+        to_remove=set(),
+        to_replace=Replacements.make([]),
+    ) == ''
+
+
 def test_add_import_import_already_there():
     assert fix_file_contents(
         'from __future__ import absolute_import\n',
