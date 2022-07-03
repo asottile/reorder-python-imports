@@ -162,19 +162,6 @@ def add_imports(
     ]
 
 
-def remove_imports(
-        partitions: Iterable[CodePartition],
-        to_remove: set[tuple[str, str | None] | tuple[str, str, str | None]],
-) -> list[CodePartition]:
-    return [
-        partition for partition in partitions
-        if (
-            partition.code_type is not CodeType.IMPORT or
-            import_obj_from_str(partition.src).key not in to_remove
-        )
-    ]
-
-
 class Replacements(NamedTuple):
     # (orig_mod, attr) => new_mod
     exact: dict[tuple[str, str], str]
@@ -289,16 +276,18 @@ def _module_to_base_modules(s: str) -> Generator[str, None, None]:
 
 def remove_duplicated_imports(
         partitions: Iterable[CodePartition],
+        *,
+        to_remove: set[tuple[str, ...]],
 ) -> list[CodePartition]:
-    seen: set[Import | ImportFrom] = set()
+    seen = set(to_remove)
     seen_module_names: set[str] = set()
     without_exact_duplicates = []
 
     for partition in partitions:
         if partition.code_type is CodeType.IMPORT:
             import_obj = import_obj_from_str(partition.src)
-            if import_obj not in seen:
-                seen.add(import_obj)
+            if import_obj.key not in seen:
+                seen.add(import_obj.key)
                 if (
                         isinstance(import_obj, Import) and
                         not import_obj.key.asname
@@ -385,7 +374,7 @@ def fix_file_contents(
         contents: str,
         *,
         to_add: tuple[str, ...] = (),
-        to_remove: set[tuple[str, str | None] | tuple[str, str, str | None]],
+        to_remove: set[tuple[str, ...]],
         to_replace: Replacements,
         settings: Settings = Settings(),
 ) -> str:
@@ -401,9 +390,8 @@ def fix_file_contents(
     partitioned = combine_trailing_code_chunks(partitioned)
     partitioned = add_imports(partitioned, to_add=to_add)
     partitioned = separate_comma_imports(partitioned)
-    partitioned = remove_imports(partitioned, to_remove=to_remove)
     partitioned = replace_imports(partitioned, to_replace=to_replace)
-    partitioned = remove_duplicated_imports(partitioned)
+    partitioned = remove_duplicated_imports(partitioned, to_remove=to_remove)
     partitioned = apply_import_sorting(partitioned, settings=settings)
 
     return _partitions_to_src(partitioned).replace('\n', nl)
@@ -413,7 +401,7 @@ def _fix_file(
         filename: str,
         args: argparse.Namespace,
         *,
-        to_remove: set[tuple[str, str | None] | tuple[str, str, str | None]],
+        to_remove: set[tuple[str, ...]],
         to_replace: Replacements,
         settings: Settings = Settings(),
 ) -> int:
