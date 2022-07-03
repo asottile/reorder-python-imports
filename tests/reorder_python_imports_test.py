@@ -209,40 +209,37 @@ def test_separate_comma_imports_does_not_remove_comments_when_not_splitting():
 
 
 def test_remove_duplicated_imports_trivial():
-    assert remove_duplicated_imports([]) == []
+    assert remove_duplicated_imports([], to_remove=set()) == []
 
 
 def test_remove_duplicated_imports_no_dupes_no_removals():
-    input_partitions = [
+    partitions = [
         CodePartition(CodeType.IMPORT, 'import sys\n'),
         CodePartition(CodeType.NON_CODE, '\n'),
         CodePartition(CodeType.IMPORT, 'from six import text_type\n'),
     ]
-    assert remove_duplicated_imports(input_partitions) == input_partitions
+    assert remove_duplicated_imports(partitions, to_remove=set()) == partitions
 
 
 def test_remove_duplicated_imports_removes_duplicated():
-    assert remove_duplicated_imports([
+    partitions = [
         CodePartition(CodeType.IMPORT, 'import sys\n'),
-        CodePartition(CodeType.IMPORT, 'import sys\n'),
-    ]) == [
         CodePartition(CodeType.IMPORT, 'import sys\n'),
     ]
+    expected = [CodePartition(CodeType.IMPORT, 'import sys\n')]
+    assert remove_duplicated_imports(partitions, to_remove=set()) == expected
 
 
 def test_remove_duplicate_redundant_import_imports():
-    assert remove_duplicated_imports([
+    partitions = [
         CodePartition(CodeType.IMPORT, 'import os\n'),
         CodePartition(CodeType.IMPORT, 'import os.path\n'),
-    ]) == [
-        CodePartition(CodeType.IMPORT, 'import os.path\n'),
     ]
-    assert remove_duplicated_imports([
-        CodePartition(CodeType.IMPORT, 'import os.path\n'),
-        CodePartition(CodeType.IMPORT, 'import os\n'),
-    ]) == [
-        CodePartition(CodeType.IMPORT, 'import os.path\n'),
-    ]
+    expected = [CodePartition(CodeType.IMPORT, 'import os.path\n')]
+
+    assert remove_duplicated_imports(partitions, to_remove=set()) == expected
+    partitions.reverse()
+    assert remove_duplicated_imports(partitions, to_remove=set()) == expected
 
 
 def test_aliased_imports_not_considered_redundant():
@@ -250,7 +247,7 @@ def test_aliased_imports_not_considered_redundant():
         CodePartition(CodeType.IMPORT, 'import os\n'),
         CodePartition(CodeType.IMPORT, 'import os.path as os_path\n'),
     ]
-    assert remove_duplicated_imports(partitions) == partitions
+    assert remove_duplicated_imports(partitions, to_remove=set()) == partitions
 
 
 def test_aliased_imports_not_considered_redundant_v2():
@@ -258,7 +255,7 @@ def test_aliased_imports_not_considered_redundant_v2():
         CodePartition(CodeType.IMPORT, 'import os as osmod\n'),
         CodePartition(CodeType.IMPORT, 'import os.path\n'),
     ]
-    assert remove_duplicated_imports(partitions) == partitions
+    assert remove_duplicated_imports(partitions, to_remove=set()) == partitions
 
 
 def test_apply_import_sorting_trivial():
