@@ -153,17 +153,9 @@ def separate_comma_imports(
 
 
 def add_imports(
-        partitions: Iterable[CodePartition],
+        partitions: list[CodePartition],
         to_add: tuple[str, ...] = (),
 ) -> list[CodePartition]:
-    partitions = list(partitions)
-    if not _partitions_to_src(partitions).strip():
-        return partitions
-
-    # If we don't have a trailing newline, this refactor is wrong
-    if not partitions[-1].src.endswith('\n'):
-        partitions[-1] = partitions[-1]._replace(src=partitions[-1].src + '\n')
-
     return partitions + [
         CodePartition(CodeType.IMPORT, imp_statement.strip() + '\n')
         for imp_statement in to_add
@@ -400,7 +392,11 @@ def fix_file_contents(
 ) -> str:
     # internally use `'\n` as the newline and normalize at the very end
     nl = _most_common_line_ending(contents)
-    contents = contents.replace('\r\n', '\n').replace('\r', '\n')
+    contents = contents.replace('\r\n', '\n').replace('\r', '\n').rstrip()
+    if contents:
+        contents += '\n'
+    else:
+        return ''
 
     partitioned = partition_source(contents)
     partitioned = combine_trailing_code_chunks(partitioned)
