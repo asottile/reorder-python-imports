@@ -829,6 +829,27 @@ def test_fix_cr():
     assert ret == s
 
 
+def test_fix_mixed_uses_first_newline():
+    s = (
+        '"""foo"""\n'
+        'import os\r\n'
+        'import sys\r\n'
+        'x = 1\r\n'
+    )
+    ret = fix_file_contents(
+        s,
+        to_add=(),
+        to_remove=set(),
+        to_replace=Replacements.make([]),
+    )
+    assert ret == (
+        '"""foo"""\n'
+        'import os\n'
+        'import sys\n'
+        'x = 1\n'
+    )
+
+
 @pytest.mark.parametrize(
     ('opt', 'expected'),
     (

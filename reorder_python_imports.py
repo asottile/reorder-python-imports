@@ -371,15 +371,14 @@ def apply_import_sorting(
     return pre_import_code + new_imports + rest
 
 
-def _most_common_line_ending(s: str) -> str:
-    # initialize in case there's no line endings at all
-    counts = collections.Counter({'\n': 0})
-    for line in s.splitlines(True):
-        for ending in ('\r\n', '\r', '\n'):
-            if line.endswith(ending):
-                counts[ending] += 1
-                break
-    return counts.most_common(1)[0][0]
+def _first_line_ending(s: str) -> str:
+    sio = io.StringIO(s, newline='')
+    line = sio.readline()
+    for nl in ('\r\n', '\r'):
+        if line.endswith(nl):
+            return nl
+    else:
+        return '\n'
 
 
 def fix_file_contents(
@@ -391,7 +390,7 @@ def fix_file_contents(
         settings: Settings = Settings(),
 ) -> str:
     # internally use `'\n` as the newline and normalize at the very end
-    nl = _most_common_line_ending(contents)
+    nl = _first_line_ending(contents)
     contents = contents.replace('\r\n', '\n').replace('\r', '\n').rstrip()
     if contents:
         contents += '\n'
