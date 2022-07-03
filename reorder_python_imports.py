@@ -40,14 +40,6 @@ TERMINATES_DOCSTRING = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
 TERMINATES_IMPORT = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
 
 
-def get_line_offsets_by_line_no(src: str) -> list[int]:
-    # Padded so we can index with line number
-    offsets = [0, 0]
-    for line in src.splitlines(True):
-        offsets.append(offsets[-1] + len(line))
-    return offsets
-
-
 def _partitions_to_src(partitions: Iterable[CodePartition]) -> str:
     return ''.join(part.src for part in partitions)
 
@@ -56,10 +48,10 @@ def partition_source(src: str) -> list[CodePartition]:
     """Partitions source into a list of `CodePartition`s for import
     refactoring.
     """
-    line_offsets = get_line_offsets_by_line_no(src)
+    lines = src.splitlines(True)
 
     chunks = []
-    startpos = 0
+    startline = 0
     pending_chunk_type = None
     possible_ending_tokens = None
     seen_import = False
@@ -70,7 +62,8 @@ def partition_source(src: str) -> list[CodePartition]:
         if pending_chunk_type is None:
             if not seen_import and token_type == tokenize.COMMENT:
                 if 'noreorder' in token_text:
-                    chunks.append(CodePartition(CodeType.CODE, src[startpos:]))
+                    srctext = ''.join(lines[startline:])
+                    chunks.append(CodePartition(CodeType.CODE, srctext))
                     break
                 else:
                     pending_chunk_type = CodeType.PRE_IMPORT_CODE
@@ -89,13 +82,13 @@ def partition_source(src: str) -> list[CodePartition]:
             elif token_type == tokenize.NL:
                 # A NL token is a non-important newline, we'll immediately
                 # append a NON_CODE partition
-                endpos = line_offsets[erow] + ecol
-                srctext = src[startpos:endpos]
-                startpos = endpos
+                srctext = ''.join(lines[startline:erow])
+                startline = erow
                 chunks.append(CodePartition(CodeType.NON_CODE, srctext))
             elif token_type == tokenize.COMMENT:
                 if 'noreorder' in token_text:
-                    chunks.append(CodePartition(CodeType.CODE, src[startpos:]))
+                    srctext = ''.join(lines[startline:])
+                    chunks.append(CodePartition(CodeType.CODE, srctext))
                     break
                 else:
                     pending_chunk_type = CodeType.CODE
@@ -107,18 +100,19 @@ def partition_source(src: str) -> list[CodePartition]:
                 # We've reached a `CODE` block, which spans the rest of the
                 # file (intentionally timid).  Let's append that block and be
                 # done
-                chunks.append(CodePartition(CodeType.CODE, src[startpos:]))
+                srctext = ''.join(lines[startline:])
+                chunks.append(CodePartition(CodeType.CODE, srctext))
                 break
         # Attempt to find ending of token
         elif token_type in possible_ending_tokens:
-            endpos = line_offsets[erow] + ecol
-            srctext = src[startpos:endpos]
-            startpos = endpos
+            srctext = ''.join(lines[startline:erow])
+            startline = erow
             chunks.append(CodePartition(pending_chunk_type, srctext))
             pending_chunk_type = None
             possible_ending_tokens = None
         elif token_type == tokenize.COMMENT and 'noreorder' in token_text:
-            chunks.append(CodePartition(CodeType.CODE, src[startpos:]))
+            srctext = ''.join(lines[startline:])
+            chunks.append(CodePartition(CodeType.CODE, srctext))
             break
 
     chunks = [chunk for chunk in chunks if chunk.src]

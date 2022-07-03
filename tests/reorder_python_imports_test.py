@@ -11,7 +11,6 @@ from reorder_python_imports import apply_import_sorting
 from reorder_python_imports import CodePartition
 from reorder_python_imports import CodeType
 from reorder_python_imports import fix_file_contents
-from reorder_python_imports import get_line_offsets_by_line_no
 from reorder_python_imports import main
 from reorder_python_imports import partition_source
 from reorder_python_imports import remove_duplicated_imports
@@ -169,26 +168,6 @@ def test_partition_source_comment_lines():
         CodePartition(CodeType.PRE_IMPORT_CODE, '# hello world\n'),
         CodePartition(CodeType.IMPORT, 'import os\n'),
     ]
-
-
-def test_line_offsets_trivial():
-    assert get_line_offsets_by_line_no('') == [0, 0]
-
-
-def test_line_offsets_no_eof_newline():
-    assert get_line_offsets_by_line_no('hello') == [0, 0, 5]
-
-
-def test_line_offsets_eof_newline():
-    assert get_line_offsets_by_line_no('hello\n') == [0, 0, 6]
-
-
-def test_line_offsets_multiple_lines():
-    src = 'hello\nworld\n'
-    ret = get_line_offsets_by_line_no(src)
-    assert ret == [0, 0, 6, 12]
-    # To demonstrate how it is used: acquire everything from line 2 onwards
-    assert src[ret[2]:] == 'world\n'
 
 
 def test_separate_comma_imports_trivial():
