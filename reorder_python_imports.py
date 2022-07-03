@@ -115,11 +115,7 @@ def partition_source(src: str) -> list[CodePartition]:
             chunks.append(CodePartition(CodeType.CODE, srctext))
             break
 
-    chunks = [chunk for chunk in chunks if chunk.src]
-
-    # Make sure we're not removing any code
-    assert _partitions_to_src(chunks) == src
-    return chunks
+    return [chunk for chunk in chunks if chunk.src]
 
 
 def combine_trailing_code_chunks(
@@ -379,16 +375,6 @@ def apply_import_sorting(
     # this works
     if new_imports:
         new_imports.pop()
-
-    # There's the potential that we moved a bunch of whitespace onto the
-    # beginning of the rest of the code.  To fix this, we're going to combine
-    # all of that code, and then make sure there are two linebreaks to start
-    restsrc = _partitions_to_src(rest)
-    restsrc = restsrc.rstrip()
-    if restsrc:
-        rest = [CodePartition(CodeType.CODE, restsrc + '\n')]
-    else:
-        rest = []
 
     return pre_import_code + new_imports + rest
 
