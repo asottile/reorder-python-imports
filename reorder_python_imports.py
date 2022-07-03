@@ -29,6 +29,8 @@ if (  # pragma: no branch
 
 CodeType = enum.Enum('CodeType', 'PRE_IMPORT_CODE IMPORT NON_CODE CODE')
 
+NON_COMBINABLE = (CodeType.IMPORT, CodeType.PRE_IMPORT_CODE)
+
 
 class CodePartition(NamedTuple):
     code_type: CodeType
@@ -45,9 +47,6 @@ def _partitions_to_src(partitions: Iterable[CodePartition]) -> str:
 
 
 def partition_source(src: str) -> list[CodePartition]:
-    """Partitions source into a list of `CodePartition`s for import
-    refactoring.
-    """
     lines = src.splitlines(True)
 
     chunks = []
@@ -115,22 +114,16 @@ def partition_source(src: str) -> list[CodePartition]:
             chunks.append(CodePartition(CodeType.CODE, srctext))
             break
 
-    return [chunk for chunk in chunks if chunk.src]
+    # combine any trailing code chunks
+    ret = [chunk for chunk in chunks if chunk.src]
+    code = []
+    while ret and ret[-1].code_type not in NON_COMBINABLE:
+        code.append(ret.pop())
+    if code:
+        code_src = _partitions_to_src(reversed(code))
+        ret.append(CodePartition(CodeType.CODE, code_src))
 
-
-def combine_trailing_code_chunks(
-        partitions: Iterable[CodePartition],
-) -> list[CodePartition]:
-    chunks = list(partitions)
-
-    NON_COMBINABLE = (CodeType.IMPORT, CodeType.PRE_IMPORT_CODE)
-    if chunks and chunks[-1].code_type not in NON_COMBINABLE:
-        src = chunks.pop().src
-        while chunks and chunks[-1].code_type not in NON_COMBINABLE:
-            src = chunks.pop().src + src
-
-        chunks.append(CodePartition(CodeType.CODE, src))
-    return chunks
+    return ret
 
 
 def separate_comma_imports(
@@ -387,7 +380,6 @@ def fix_file_contents(
         return ''
 
     partitioned = partition_source(contents)
-    partitioned = combine_trailing_code_chunks(partitioned)
     partitioned = add_imports(partitioned, to_add=to_add)
     partitioned = separate_comma_imports(partitioned)
     partitioned = replace_imports(partitioned, to_replace=to_replace)
