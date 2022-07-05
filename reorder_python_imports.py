@@ -47,7 +47,9 @@ def _partitions_to_src(partitions: Iterable[CodePartition]) -> str:
 
 
 def partition_source(src: str) -> list[CodePartition]:
-    lines = src.splitlines(True)
+    sio = io.StringIO(src, newline=None)
+    lines = list(sio)
+    sio.seek(0)
 
     chunks = []
     startline = 0
@@ -56,7 +58,7 @@ def partition_source(src: str) -> list[CodePartition]:
     seen_import = False
     for (
             token_type, token_text, (srow, scol), (erow, ecol), _,
-    ) in tokenize.generate_tokens(io.StringIO(src).readline):
+    ) in tokenize.generate_tokens(sio.readline):
         # Searching for a start of a chunk
         if pending_chunk_type is None:
             if not seen_import and token_type == tokenize.COMMENT:
@@ -373,9 +375,9 @@ def fix_file_contents(
 ) -> str:
     # internally use `'\n` as the newline and normalize at the very end
     nl = _first_line_ending(contents)
-    contents = contents.replace('\r\n', '\n').replace('\r', '\n').rstrip()
+    contents = contents.rstrip()
     if contents:
-        contents += '\n'
+        contents += nl
     else:
         return ''
 
