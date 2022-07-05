@@ -118,22 +118,28 @@ def partition_source(src: str) -> tuple[str, list[str], str]:
     return ''.join(pre), imports, ''.join(code)
 
 
-def separate_comma_imports(imports: list[str]) -> list[str]:
-    """Turns `import a, b` into `import a` and `import b`"""
-    def _inner() -> Generator[str, None, None]:
-        for s in imports:
-            obj = import_obj_from_str(s)
-            if obj.is_multiple:
-                for new_obj in obj.split():
-                    yield str(new_obj)
-            else:
-                yield s
+def parse_imports(
+        imports: list[str],
+        *,
+        to_add: tuple[str, ...] = (),
+) -> list[tuple[str, Import | ImportFrom]]:
+    ret = []
 
-    return list(_inner())
+    for s in to_add:
+        obj = import_obj_from_str(s)
+        if not obj.is_multiple:
+            ret.append((s, obj))
+        else:
+            ret.extend((str(new), new) for new in obj.split())
 
+    for s in imports:
+        obj = import_obj_from_str(s)
+        if not obj.is_multiple:
+            ret.append((s, obj))
+        else:
+            ret.extend((str(new), new) for new in obj.split())
 
-def add_imports(imports: list[str], to_add: tuple[str, ...] = ()) -> list[str]:
-    return imports + [f'{s.strip()}\n' for s in to_add]
+    return ret
 
 
 class Replacements(NamedTuple):
@@ -167,70 +173,78 @@ class Replacements(NamedTuple):
         return cls(exact=exact, mods=mods)
 
 
-def replace_imports(imports: list[str], to_replace: Replacements) -> list[str]:
-    def _inner() -> Generator[str, None, None]:
-        for s in imports:
-            import_obj = import_obj_from_str(s)
+def replace_imports(
+        imports: list[tuple[str, Import | ImportFrom]],
+        to_replace: Replacements,
+) -> list[tuple[str, Import | ImportFrom]]:
+    ret = []
 
-            # cannot rewrite import-imports: makes undefined names
-            if isinstance(import_obj, Import):
-                yield s
-                continue
+    for s, import_obj in imports:
+        # cannot rewrite import-imports: makes undefined names
+        if isinstance(import_obj, Import):
+            ret.append((s, import_obj))
+            continue
 
-            mod, symbol, asname = import_obj.key
-            mod_symbol = f'{mod}.{symbol}'
+        mod, symbol, asname = import_obj.key
+        mod_symbol = f'{mod}.{symbol}'
 
-            # from a.b.c import d => from e.f.g import d
-            if (mod, symbol) in to_replace.exact:
+        # from a.b.c import d => from e.f.g import d
+        if (mod, symbol) in to_replace.exact:
+            node = ast.ImportFrom(
+                module=to_replace.exact[mod, symbol],
+                names=import_obj.node.names,
+                level=0,
+            )
+            obj = ImportFrom(node)
+            ret.append((str(obj), obj))
+        # from a.b.c import d as e => from f import g as e
+        # from a.b.c import d as e => import f as e
+        # from a.b import c => import c
+        elif (
+                mod_symbol in to_replace.mods and
+                (asname or to_replace.mods[mod_symbol] == symbol)
+        ):
+            new_mod = to_replace.mods[mod_symbol]
+            new_mod, dot, new_sym = new_mod.rpartition('.')
+            if new_mod:
                 node = ast.ImportFrom(
-                    module=to_replace.exact[mod, symbol],
-                    names=import_obj.node.names,
+                    module=new_mod,
+                    names=[ast.alias(new_sym, asname)],
                     level=0,
                 )
-                yield str(ImportFrom(node))
-            # from a.b.c import d as e => from f import g as e
-            # from a.b.c import d as e => import f as e
-            # from a.b import c => import c
-            elif (
-                    mod_symbol in to_replace.mods and
-                    (asname or to_replace.mods[mod_symbol] == symbol)
-            ):
-                new_mod = to_replace.mods[mod_symbol]
-                new_mod, dot, new_sym = new_mod.rpartition('.')
-                if new_mod:
+                obj = ImportFrom(node)
+                ret.append((str(obj), obj))
+            elif not dot:
+                node_i = ast.Import(names=[ast.alias(new_sym, asname)])
+                obj_i = Import(node_i)
+                ret.append((str(obj_i), obj_i))
+            else:
+                ret.append((s, import_obj))
+        # from a.b.c import d => from e import d
+        elif mod in to_replace.mods:
+            node = ast.ImportFrom(
+                module=to_replace.mods[mod],
+                names=import_obj.node.names,
+                level=0,
+            )
+            obj = ImportFrom(node)
+            ret.append((str(obj), obj))
+        else:
+            for mod_name in _module_to_base_modules(mod):
+                if mod_name in to_replace.mods:
+                    new_mod = to_replace.mods[mod_name]
                     node = ast.ImportFrom(
-                        module=new_mod,
-                        names=[ast.alias(new_sym, asname)],
+                        module=f'{new_mod}{mod[len(mod_name):]}',
+                        names=import_obj.node.names,
                         level=0,
                     )
-                    yield str(ImportFrom(node))
-                elif not dot:
-                    node_i = ast.Import(names=[ast.alias(new_sym, asname)])
-                    yield str(Import(node_i))
-                else:
-                    yield s
-            # from a.b.c import d => from e import d
-            elif mod in to_replace.mods:
-                node = ast.ImportFrom(
-                    module=to_replace.mods[mod],
-                    names=import_obj.node.names,
-                    level=0,
-                )
-                yield str(ImportFrom(node))
+                    obj = ImportFrom(node)
+                    ret.append((str(obj), obj))
+                    break
             else:
-                for mod_name in _module_to_base_modules(mod):
-                    if mod_name in to_replace.mods:
-                        new_mod = to_replace.mods[mod_name]
-                        node = ast.ImportFrom(
-                            module=f'{new_mod}{mod[len(mod_name):]}',
-                            names=import_obj.node.names,
-                            level=0,
-                        )
-                        yield str(ImportFrom(node))
-                        break
-                else:
-                    yield s
-    return list(_inner())
+                ret.append((s, import_obj))
+
+    return ret
 
 
 def _module_to_base_modules(s: str) -> Generator[str, None, None]:
@@ -243,16 +257,15 @@ def _module_to_base_modules(s: str) -> Generator[str, None, None]:
 
 
 def remove_duplicated_imports(
-        imports: list[str],
+        imports: list[tuple[str, Import | ImportFrom]],
         *,
         to_remove: set[tuple[str, ...]],
-) -> list[str]:
+) -> list[tuple[str, Import | ImportFrom]]:
     seen = set(to_remove)
     seen_module_names: set[str] = set()
     without_exact_duplicates = []
 
-    for s in imports:
-        import_obj = import_obj_from_str(s)
+    for s, import_obj in imports:
         if import_obj.key not in seen:
             seen.add(import_obj.key)
             if (
@@ -262,27 +275,26 @@ def remove_duplicated_imports(
                 seen_module_names.update(
                     _module_to_base_modules(import_obj.module),
                 )
-            without_exact_duplicates.append(s)
+            without_exact_duplicates.append((s, import_obj))
 
     ret = []
-    for s in without_exact_duplicates:
-        import_obj = import_obj_from_str(s)
+    for s, import_obj in without_exact_duplicates:
         if (
                 isinstance(import_obj, Import) and
                 not import_obj.key.asname and
                 import_obj.key.module in seen_module_names
         ):
             continue
-        ret.append(s)
+        ret.append((s, import_obj))
 
     return ret
 
 
 def apply_import_sorting(
-        imports: list[str],
+        imports: list[tuple[str, Import | ImportFrom]],
         settings: Settings = Settings(),
 ) -> list[str]:
-    import_obj_to_s = {import_obj_from_str(s): s for s in imports}
+    import_obj_to_s = {v: s for s, v in imports}
 
     sorted_blocks = sort(import_obj_to_s, settings=settings)
 
@@ -328,11 +340,10 @@ def fix_file_contents(
         return ''
 
     before, imports, after = partition_source(contents)
-    imports = add_imports(imports, to_add=to_add)
-    imports = separate_comma_imports(imports)
-    imports = replace_imports(imports, to_replace=to_replace)
-    imports = remove_duplicated_imports(imports, to_remove=to_remove)
-    imports = apply_import_sorting(imports, settings=settings)
+    parsed = parse_imports(imports, to_add=to_add)
+    parsed = replace_imports(parsed, to_replace=to_replace)
+    parsed = remove_duplicated_imports(parsed, to_remove=to_remove)
+    imports = apply_import_sorting(parsed, settings=settings)
 
     return f'{before}{"".join(imports)}{after}'.replace('\n', nl)
 
@@ -361,7 +372,7 @@ def _fix_file(
 
     new_contents = fix_file_contents(
         contents,
-        to_add=args.add_import,
+        to_add=tuple(f'{s.strip()}\n' for s in args.add_import),
         to_remove=to_remove,
         to_replace=to_replace,
         settings=settings,
