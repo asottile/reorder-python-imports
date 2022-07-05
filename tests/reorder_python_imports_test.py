@@ -77,6 +77,10 @@ def test_partition_source_before_code_only(s):
             'import os\n',
             id='noreorder on docstring\n',
         ),
+        pytest.param(
+            '"""docstring""" + "nope"\n',
+            id='docstring with expression',
+        ),
     ),
 )
 def test_partition_source_code_only(s):
