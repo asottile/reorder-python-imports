@@ -27,9 +27,7 @@ def in_tmpdir(tmpdir):
     (
         pytest.param('', id='trivial'),
         pytest.param('#!/usr/bin/env python\n', id='shebang'),
-        pytest.param('#!/usr/bin/env python', id='shebang no nl'),
         pytest.param('# -*- coding: UTF-8 -*-\n', id='source encoding'),
-        pytest.param('# -*- coding: UTF-8 -*-', id='source encoding no nl'),
         pytest.param('  # coding: UTF-8\n', id='source encoding indented'),
         pytest.param(
             '#!/usr/bin/env python\n'
@@ -37,7 +35,6 @@ def in_tmpdir(tmpdir):
             id='shebang and source encoding',
         ),
         pytest.param('"""foo"""\n', id='docstring'),
-        pytest.param('"""foo"""', id='docstring no nl'),
         pytest.param(
             '"""foo"""\n'
             '"""bar"""\n',
@@ -51,17 +48,33 @@ def in_tmpdir(tmpdir):
     ),
 )
 def test_partition_source_before_code_only(s):
-    before, imports, after = partition_source(s)
+    before, imports, after, nl = partition_source(s)
     assert before == s
     assert imports == []
     assert after == ''
+    assert nl == '\n'
+
+
+@pytest.mark.parametrize(
+    's',
+    (
+        pytest.param('#!/usr/bin/env python', id='shebang no nl'),
+        pytest.param('# -*- coding: UTF-8 -*-', id='source encoding no nl'),
+        pytest.param('"""foo"""', id='docstring no nl'),
+    ),
+)
+def test_adds_newline_no_nl(s):
+    before, imports, after, nl = partition_source(s)
+    assert before == f'{s}\n'
+    assert imports == []
+    assert after == ''
+    assert nl == '\n'
 
 
 @pytest.mark.parametrize(
     's',
     (
         pytest.param('x = 1\n', id='code only'),
-        pytest.param('x = 1', id='code only no nl'),
         pytest.param(
             'x = 1\n'
             'import os\n',
@@ -84,17 +97,26 @@ def test_partition_source_before_code_only(s):
     ),
 )
 def test_partition_source_code_only(s):
-    before, imports, after = partition_source(s)
+    before, imports, after, nl = partition_source(s)
     assert before == ''
     assert imports == []
     assert after == s
+    assert nl == '\n'
+
+
+def test_partition_source_code_only_adds_newline():
+    before, imports, after, nl = partition_source('x = 1')
+    assert before == ''
+    assert imports == []
+    assert after == 'x = 1\n'
+    assert nl == '\n'
 
 
 @pytest.mark.parametrize(
     ('s', 'expected'),
     (
         pytest.param('import os\n', ['import os\n'], id='simple import'),
-        pytest.param('import os', ['import os'], id='simple import no nl'),
+        pytest.param('import os', ['import os\n'], id='simple import no nl'),
         pytest.param(
             'from foo import *  # noqa\n',
             ['from foo import *  # noqa\n'],
@@ -121,13 +143,14 @@ def test_partition_source_code_only(s):
     ),
 )
 def test_partition_source_imports_only(s, expected):
-    before, imports, after = partition_source(s)
+    before, imports, after, nl = partition_source(s)
     assert imports == expected
     assert before == after == ''
+    assert nl == '\n'
 
 
 def test_partition_source_before_removes_newlines():
-    before, imports, after = partition_source(
+    before, imports, after, nl = partition_source(
         '# comment here\n'
         '\n'
         '# another comment here\n',
@@ -138,20 +161,22 @@ def test_partition_source_before_removes_newlines():
     )
     assert imports == []
     assert after == ''
+    assert nl == '\n'
 
 
 def test_partition_source_before_and_code_only():
-    before, imports, after = partition_source(
+    before, imports, after, nl = partition_source(
         '# before\n'
         'x = 1\n',
     )
     assert before == '# before\n'
     assert imports == []
     assert after == 'x = 1\n'
+    assert nl == '\n'
 
 
 def test_partition_source_all_three_types():
-    before, imports, after = partition_source(
+    before, imports, after, nl = partition_source(
         '# comment before\n'
         'import os\n'
         'import sys\n'
@@ -160,10 +185,11 @@ def test_partition_source_all_three_types():
     assert before == '# comment before\n'
     assert imports == ['import os\n', 'import sys\n']
     assert after == 'print("code after")\n'
+    assert nl == '\n'
 
 
 def test_partition_source_preserves_whitespace_after():
-    before, imports, after = partition_source(
+    before, imports, after, nl = partition_source(
         'import os\n'
         '\n'
         'print(1)\n',
@@ -171,10 +197,11 @@ def test_partition_source_preserves_whitespace_after():
     assert before == ''
     assert imports == ['import os\n']
     assert after == '\nprint(1)\n'
+    assert nl == '\n'
 
 
 def test_partition_source_preserves_comments_after():
-    before, imports, after = partition_source(
+    before, imports, after, nl = partition_source(
         'import os\n'
         '\n'
         '# comment here!\n'
@@ -189,10 +216,11 @@ def test_partition_source_preserves_comments_after():
         '\n'
         'print(1)\n'
     )
+    assert nl == '\n'
 
 
 def test_partition_source_interspersed_comments_become_code():
-    before, imports, after = partition_source(
+    before, imports, after, nl = partition_source(
         'import os\n'
         '# hello world\n'
         'import sys\n'
@@ -206,10 +234,11 @@ def test_partition_source_interspersed_comments_become_code():
         '\n'
         'print(1)\n'
     )
+    assert nl == '\n'
 
 
 def test_partition_source_noreorder_becomes_code():
-    before, imports, after = partition_source(
+    before, imports, after, nl = partition_source(
         'import os\n'
         'import sys  # noreorder\n'
         'import re\n',
@@ -220,10 +249,11 @@ def test_partition_source_noreorder_becomes_code():
         'import sys  # noreorder\n'
         'import re\n'
     )
+    assert nl == '\n'
 
 
 def test_partition_source_noreorder_becomes_code_on_first_import():
-    before, imports, after = partition_source(
+    before, imports, after, nl = partition_source(
         '# before\n'
         'import os  # noreorder\n'
         'import sys\n',
@@ -234,10 +264,11 @@ def test_partition_source_noreorder_becomes_code_on_first_import():
         'import os  # noreorder\n'
         'import sys\n'
     )
+    assert nl == '\n'
 
 
 def test_partition_source_noreorder_import_whitespace_above_preserved():
-    before, imports, after = partition_source(
+    before, imports, after, nl = partition_source(
         'import os\n'
         '\n'
         'import sys  # noreorder\n'
@@ -250,10 +281,11 @@ def test_partition_source_noreorder_import_whitespace_above_preserved():
         'import sys  # noreorder\n'
         'import re\n'
     )
+    assert nl == '\n'
 
 
 def test_partition_source_noreorder_starts_code():
-    before, imports, after = partition_source(
+    before, imports, after, nl = partition_source(
         'import os\n'
         '# noreorder\n'
         'import sys\n',
@@ -264,10 +296,11 @@ def test_partition_source_noreorder_starts_code():
         '# noreorder\n'
         'import sys\n'
     )
+    assert nl == '\n'
 
 
 def test_partition_source_noreorder_keeps_whitespace_above():
-    before, imports, after = partition_source(
+    before, imports, after, nl = partition_source(
         'import os\n'
         '\n'
         '# noreorder\n'
@@ -280,6 +313,7 @@ def test_partition_source_noreorder_keeps_whitespace_above():
         '# noreorder\n'
         'import sys\n'
     )
+    assert nl == '\n'
 
 
 @pytest.mark.parametrize(
