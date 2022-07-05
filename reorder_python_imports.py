@@ -64,8 +64,9 @@ class CodePartition(NamedTuple):
     src: str
 
 
-def partition_source(src: str) -> tuple[str, list[str], str]:
-    src = io.StringIO(src, newline=None).read()
+def partition_source(src: str) -> tuple[str, list[str], str, str]:
+    sio = io.StringIO(src, newline=None)
+    src = sio.read().rstrip() + '\n'
 
     chunks = []
     startpos = 0
@@ -115,7 +116,14 @@ def partition_source(src: str) -> tuple[str, list[str], str]:
         elif part.code_type is CodeType.CODE or i > last_idx:
             code.append(part.src)
 
-    return ''.join(pre), imports, ''.join(code)
+    if sio.newlines is None:
+        nl = '\n'
+    elif isinstance(sio.newlines, str):
+        nl = sio.newlines
+    else:
+        nl = sio.newlines[0]
+
+    return ''.join(pre), imports, ''.join(code), nl
 
 
 def parse_imports(
@@ -313,16 +321,6 @@ def apply_import_sorting(
     return new_imports
 
 
-def _first_line_ending(s: str) -> str:
-    sio = io.StringIO(s, newline='')
-    line = sio.readline()
-    for nl in ('\r\n', '\r'):
-        if line.endswith(nl):
-            return nl
-    else:
-        return '\n'
-
-
 def fix_file_contents(
         contents: str,
         *,
@@ -332,14 +330,11 @@ def fix_file_contents(
         settings: Settings = Settings(),
 ) -> str:
     # internally use `'\n` as the newline and normalize at the very end
-    nl = _first_line_ending(contents)
-    contents = contents.rstrip()
-    if contents:
-        contents += nl
-    else:
+    before, imports, after, nl = partition_source(contents)
+
+    if not before and not imports and not after:
         return ''
 
-    before, imports, after = partition_source(contents)
     parsed = parse_imports(imports, to_add=to_add)
     parsed = replace_imports(parsed, to_replace=to_replace)
     parsed = remove_duplicated_imports(parsed, to_remove=to_remove)
