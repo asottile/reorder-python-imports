@@ -8,8 +8,6 @@ from unittest import mock
 import pytest
 from classify_imports import Settings
 from reorder_python_imports import apply_import_sorting
-from reorder_python_imports import CodePartition
-from reorder_python_imports import CodeType
 from reorder_python_imports import fix_file_contents
 from reorder_python_imports import main
 from reorder_python_imports import partition_source
@@ -24,150 +22,260 @@ def in_tmpdir(tmpdir):
         yield tmpdir
 
 
-def test_partition_source_trivial():
-    assert partition_source('') == []
-
-
-def test_partition_source_errors_with_bytes():
-    with pytest.raises((AttributeError, TypeError)):
-        partition_source(b'')  # type: ignore
-
-
-def test_partition_source_shebang():
-    assert partition_source('#!/usr/bin/env python\n') == [
-        CodePartition(CodeType.PRE_IMPORT_CODE, '#!/usr/bin/env python\n'),
-    ]
-
-
-def test_partition_source_shebang_no_nl():
-    assert partition_source('#!/usr/bin/env python') == [
-        CodePartition(CodeType.PRE_IMPORT_CODE, '#!/usr/bin/env python'),
-    ]
-
-
-def test_partition_source_encoding():
-    assert partition_source('# -*- coding: UTF-8 -*-\n') == [
-        CodePartition(CodeType.PRE_IMPORT_CODE, '# -*- coding: UTF-8 -*-\n'),
-    ]
-
-
-def test_partition_source_encoding_no_nl():
-    assert partition_source('# -*- coding: UTF-8 -*-') == [
-        CodePartition(CodeType.PRE_IMPORT_CODE, '# -*- coding: UTF-8 -*-'),
-    ]
-
-
-def test_partition_source_indented_encoding():
-    assert partition_source('   # -*- coding: UTF-8 -*-\n') == [
-        CodePartition(
-            CodeType.PRE_IMPORT_CODE,
-            '   # -*- coding: UTF-8 -*-\n',
+@pytest.mark.parametrize(
+    's',
+    (
+        pytest.param('', id='trivial'),
+        pytest.param('#!/usr/bin/env python\n', id='shebang'),
+        pytest.param('#!/usr/bin/env python', id='shebang no nl'),
+        pytest.param('# -*- coding: UTF-8 -*-\n', id='source encoding'),
+        pytest.param('# -*- coding: UTF-8 -*-', id='source encoding no nl'),
+        pytest.param('  # coding: UTF-8\n', id='source encoding indented'),
+        pytest.param(
+            '#!/usr/bin/env python\n'
+            '# -*- coding: UTF-8 -*-\n',
+            id='shebang and source encoding',
         ),
-    ]
+        pytest.param('"""foo"""\n', id='docstring'),
+        pytest.param('"""foo"""', id='docstring no nl'),
+        pytest.param(
+            '"""foo"""\n'
+            '"""bar"""\n',
+            id='multiple docstrings',
+        ),
+        pytest.param(
+            '# -*- coding UTF-8 -*-\n'
+            'u"""☃☃☃"""\n',
+            id='unicode docstring',
+        ),
+    ),
+)
+def test_partition_source_before_code_only(s):
+    before, imports, after = partition_source(s)
+    assert before == s
+    assert imports == []
+    assert after == ''
 
 
-def test_partition_source_encoding_and_shebang():
-    assert partition_source(
-        '#!/usr/bin/env python\n'
-        '# -*- coding: UTF-8 -*-\n',
-    ) == [
-        CodePartition(CodeType.PRE_IMPORT_CODE, '#!/usr/bin/env python\n'),
-        CodePartition(CodeType.PRE_IMPORT_CODE, '# -*- coding: UTF-8 -*-\n'),
-    ]
+@pytest.mark.parametrize(
+    's',
+    (
+        pytest.param('x = 1\n', id='code only'),
+        pytest.param('x = 1', id='code only no nl'),
+        pytest.param(
+            'x = 1\n'
+            'import os\n',
+            id='found code before imports',
+        ),
+        pytest.param(
+            '# noreorder\n'
+            'import os\n',
+            id='noreorder before imports',
+        ),
+        pytest.param(
+            '"""docstring"""  # noreorder\n'
+            'import os\n',
+            id='noreorder on docstring\n',
+        ),
+    ),
+)
+def test_partition_source_code_only(s):
+    before, imports, after = partition_source(s)
+    assert before == ''
+    assert imports == []
+    assert after == s
 
 
-def test_partition_source_import():
-    assert partition_source('import os\n') == [
-        CodePartition(CodeType.IMPORT, 'import os\n'),
-    ]
+@pytest.mark.parametrize(
+    ('s', 'expected'),
+    (
+        pytest.param('import os\n', ['import os\n'], id='simple import'),
+        pytest.param('import os', ['import os'], id='simple import no nl'),
+        pytest.param(
+            'from foo import *  # noqa\n',
+            ['from foo import *  # noqa\n'],
+            id='preserves comments on imports',
+        ),
+        pytest.param(
+            'import sys\nimport os\n',
+            ['import sys\n', 'import os\n'],
+            id='multiple imports',
+        ),
+        pytest.param(
+            'import sys\n\n\nimport os\n',
+            ['import sys\n', 'import os\n'],
+            id='discards whitespace within imports',
+        ),
+        pytest.param(
+            'import os\n'
+            '\n'
+            '    \n'
+            'import sys\n',
+            ['import os\n', 'import sys\n'],
+            id='discards trailing whitespace within imports',
+        ),
+    ),
+)
+def test_partition_source_imports_only(s, expected):
+    before, imports, after = partition_source(s)
+    assert imports == expected
+    assert before == after == ''
 
 
-def test_partion_source_import_no_nl():
-    assert partition_source('import os') == [
-        CodePartition(CodeType.IMPORT, 'import os'),
-    ]
+def test_partition_source_before_removes_newlines():
+    before, imports, after = partition_source(
+        '# comment here\n'
+        '\n'
+        '# another comment here\n',
+    )
+    assert before == (
+        '# comment here\n'
+        '# another comment here\n'
+    )
+    assert imports == []
+    assert after == ''
 
 
-def test_partition_source_import_contains_comment():
-    # We want to maintain comments with imports
-    assert partition_source('from foo import *  # noqa\n') == [
-        CodePartition(CodeType.IMPORT, 'from foo import *  # noqa\n'),
-    ]
+def test_partition_source_before_and_code_only():
+    before, imports, after = partition_source(
+        '# before\n'
+        'x = 1\n',
+    )
+    assert before == '# before\n'
+    assert imports == []
+    assert after == 'x = 1\n'
 
 
-def test_partition_source_import_inside_code_not_an_import():
-    assert partition_source('x = 1\nimport os\n') == [
-        CodePartition(CodeType.CODE, 'x = 1\nimport os\n'),
-    ]
+def test_partition_source_all_three_types():
+    before, imports, after = partition_source(
+        '# comment before\n'
+        'import os\n'
+        'import sys\n'
+        'print("code after")\n',
+    )
+    assert before == '# comment before\n'
+    assert imports == ['import os\n', 'import sys\n']
+    assert after == 'print("code after")\n'
 
 
-def test_partition_source_docstring():
-    assert partition_source('"""foo"""\n') == [
-        CodePartition(CodeType.PRE_IMPORT_CODE, '"""foo"""\n'),
-    ]
-
-
-def test_partition_source_docstring_no_nl():
-    assert partition_source('"""foo"""') == [
-        CodePartition(CodeType.PRE_IMPORT_CODE, '"""foo"""'),
-    ]
-
-
-def test_partition_source_multiple_docstrings():
-    assert partition_source(
-        '"""foo"""\n'
-        '"""bar"""\n',
-    ) == [
-        # only the first docstring should count as a docstring
-        CodePartition(CodeType.PRE_IMPORT_CODE, '"""foo"""\n'),
-        CodePartition(CodeType.PRE_IMPORT_CODE, '"""bar"""\n'),
-    ]
-
-
-def test_partition_source_unicode_docstring():
-    assert partition_source(
-        '# -*- coding: UTF-8 -*-\n'
-        'u"""☃☃☃"""\n',
-    ) == [
-        CodePartition(CodeType.PRE_IMPORT_CODE, '# -*- coding: UTF-8 -*-\n'),
-        CodePartition(CodeType.PRE_IMPORT_CODE, 'u"""☃☃☃"""\n'),
-    ]
-
-
-def test_partition_source_blank_lines_with_whitespace():
-    assert partition_source(
+def test_partition_source_preserves_whitespace_after():
+    before, imports, after = partition_source(
         'import os\n'
         '\n'
-        '    \n'
-        'import sys\n',
-    ) == [
-        CodePartition(CodeType.IMPORT, 'import os\n'),
-        CodePartition(CodeType.NON_CODE, '\n'),
-        CodePartition(CodeType.NON_CODE, '    \n'),
-        CodePartition(CodeType.IMPORT, 'import sys\n'),
-    ]
+        'print(1)\n',
+    )
+    assert before == ''
+    assert imports == ['import os\n']
+    assert after == '\nprint(1)\n'
 
 
-def test_partition_source_code():
-    assert partition_source('x = 1\n') == [
-        CodePartition(CodeType.CODE, 'x = 1\n'),
-    ]
+def test_partition_source_preserves_comments_after():
+    before, imports, after = partition_source(
+        'import os\n'
+        '\n'
+        '# comment here!\n'
+        '\n'
+        'print(1)\n',
+    )
+    assert before == ''
+    assert imports == ['import os\n']
+    assert after == (
+        '\n'
+        '# comment here!\n'
+        '\n'
+        'print(1)\n'
+    )
 
 
-def test_partition_source_code_no_nl():
-    assert partition_source('x = 1') == [
-        CodePartition(CodeType.CODE, 'x = 1'),
-    ]
-
-
-def test_partition_source_comment_lines():
-    assert partition_source(
+def test_partition_source_interspersed_comments_become_code():
+    before, imports, after = partition_source(
+        'import os\n'
         '# hello world\n'
-        'import os\n',
-    ) == [
-        CodePartition(CodeType.PRE_IMPORT_CODE, '# hello world\n'),
-        CodePartition(CodeType.IMPORT, 'import os\n'),
-    ]
+        'import sys\n'
+        '\n'
+        'print(1)\n',
+    )
+    assert before == ''
+    assert imports == ['import os\n', 'import sys\n']
+    assert after == (
+        '# hello world\n'
+        '\n'
+        'print(1)\n'
+    )
+
+
+def test_partition_source_noreorder_becomes_code():
+    before, imports, after = partition_source(
+        'import os\n'
+        'import sys  # noreorder\n'
+        'import re\n',
+    )
+    assert before == ''
+    assert imports == ['import os\n']
+    assert after == (
+        'import sys  # noreorder\n'
+        'import re\n'
+    )
+
+
+def test_partition_source_noreorder_becomes_code_on_first_import():
+    before, imports, after = partition_source(
+        '# before\n'
+        'import os  # noreorder\n'
+        'import sys\n',
+    )
+    assert before == '# before\n'
+    assert imports == []
+    assert after == (
+        'import os  # noreorder\n'
+        'import sys\n'
+    )
+
+
+def test_partition_source_noreorder_import_whitespace_above_preserved():
+    before, imports, after = partition_source(
+        'import os\n'
+        '\n'
+        'import sys  # noreorder\n'
+        'import re\n',
+    )
+    assert before == ''
+    assert imports == ['import os\n']
+    assert after == (
+        '\n'
+        'import sys  # noreorder\n'
+        'import re\n'
+    )
+
+
+def test_partition_source_noreorder_starts_code():
+    before, imports, after = partition_source(
+        'import os\n'
+        '# noreorder\n'
+        'import sys\n',
+    )
+    assert before == ''
+    assert imports == ['import os\n']
+    assert after == (
+        '# noreorder\n'
+        'import sys\n'
+    )
+
+
+def test_partition_source_noreorder_keeps_whitespace_above():
+    before, imports, after = partition_source(
+        'import os\n'
+        '\n'
+        '# noreorder\n'
+        'import sys\n',
+    )
+    assert before == ''
+    assert imports == ['import os\n']
+    assert after == (
+        '\n'
+        '# noreorder\n'
+        'import sys\n'
+    )
 
 
 def test_separate_comma_imports_trivial():
@@ -175,37 +283,25 @@ def test_separate_comma_imports_trivial():
 
 
 def test_separate_comma_imports_none_to_separate():
-    input_partitions = [
-        CodePartition(CodeType.IMPORT, 'import os\n'),
-        CodePartition(CodeType.NON_CODE, '\n'),
-        CodePartition(CodeType.IMPORT, 'import six\n'),
-    ]
-    assert separate_comma_imports(input_partitions) == input_partitions
+    imports = ['import os\n', 'import six\n']
+    assert separate_comma_imports(imports) == imports
 
 
 def test_separate_comma_imports_separates_some():
-    assert separate_comma_imports([
-        CodePartition(CodeType.IMPORT, 'import os, sys\n'),
-    ]) == [
-        CodePartition(CodeType.IMPORT, 'import os\n'),
-        CodePartition(CodeType.IMPORT, 'import sys\n'),
-    ]
+    imports = separate_comma_imports(['import os, sys\n'])
+    assert imports == ['import os\n', 'import sys\n']
 
 
 def test_separate_comma_imports_removes_comments():
     # Since it's not really possible to know what the comma points to, we just
     # remove it
-    assert separate_comma_imports([
-        CodePartition(CodeType.IMPORT, 'import os, sys  # derp\n'),
-    ]) == [
-        CodePartition(CodeType.IMPORT, 'import os\n'),
-        CodePartition(CodeType.IMPORT, 'import sys\n'),
-    ]
+    imports = separate_comma_imports(['import os, sys  # derp\n'])
+    assert imports == ['import os\n', 'import sys\n']
 
 
 def test_separate_comma_imports_does_not_remove_comments_when_not_splitting():
-    input_partitions = [CodePartition(CodeType.IMPORT, 'import sys  # noqa\n')]
-    assert separate_comma_imports(input_partitions) == input_partitions
+    imports = ['import sys  # noqa']
+    assert separate_comma_imports(imports) == imports
 
 
 def test_remove_duplicated_imports_trivial():
@@ -213,49 +309,36 @@ def test_remove_duplicated_imports_trivial():
 
 
 def test_remove_duplicated_imports_no_dupes_no_removals():
-    partitions = [
-        CodePartition(CodeType.IMPORT, 'import sys\n'),
-        CodePartition(CodeType.NON_CODE, '\n'),
-        CodePartition(CodeType.IMPORT, 'from six import text_type\n'),
+    imports = [
+        'import sys\n'
+        'from six import text_type\n',
     ]
-    assert remove_duplicated_imports(partitions, to_remove=set()) == partitions
+    assert remove_duplicated_imports(imports, to_remove=set()) == imports
 
 
 def test_remove_duplicated_imports_removes_duplicated():
-    partitions = [
-        CodePartition(CodeType.IMPORT, 'import sys\n'),
-        CodePartition(CodeType.IMPORT, 'import sys\n'),
-    ]
-    expected = [CodePartition(CodeType.IMPORT, 'import sys\n')]
-    assert remove_duplicated_imports(partitions, to_remove=set()) == expected
+    imports = ['import sys\n', 'import sys\n']
+    expected = ['import sys\n']
+    assert remove_duplicated_imports(imports, to_remove=set()) == expected
 
 
 def test_remove_duplicate_redundant_import_imports():
-    partitions = [
-        CodePartition(CodeType.IMPORT, 'import os\n'),
-        CodePartition(CodeType.IMPORT, 'import os.path\n'),
-    ]
-    expected = [CodePartition(CodeType.IMPORT, 'import os.path\n')]
+    imports = ['import os\n', 'import os.path\n']
+    expected = ['import os.path\n']
 
-    assert remove_duplicated_imports(partitions, to_remove=set()) == expected
-    partitions.reverse()
-    assert remove_duplicated_imports(partitions, to_remove=set()) == expected
+    assert remove_duplicated_imports(imports, to_remove=set()) == expected
+    imports.reverse()
+    assert remove_duplicated_imports(imports, to_remove=set()) == expected
 
 
 def test_aliased_imports_not_considered_redundant():
-    partitions = [
-        CodePartition(CodeType.IMPORT, 'import os\n'),
-        CodePartition(CodeType.IMPORT, 'import os.path as os_path\n'),
-    ]
-    assert remove_duplicated_imports(partitions, to_remove=set()) == partitions
+    imports = ['import os\n', 'import os.path as os_path\n']
+    assert remove_duplicated_imports(imports, to_remove=set()) == imports
 
 
 def test_aliased_imports_not_considered_redundant_v2():
-    partitions = [
-        CodePartition(CodeType.IMPORT, 'import os as osmod\n'),
-        CodePartition(CodeType.IMPORT, 'import os.path\n'),
-    ]
-    assert remove_duplicated_imports(partitions, to_remove=set()) == partitions
+    imports = ['import os as osmod\n', 'import os.path\n']
+    assert remove_duplicated_imports(imports, to_remove=set()) == imports
 
 
 def test_apply_import_sorting_trivial():
@@ -263,75 +346,52 @@ def test_apply_import_sorting_trivial():
 
 
 def test_apply_import_sorting_all_types():
-    input_partitions = [
-        CodePartition(CodeType.PRE_IMPORT_CODE, '#!/usr/bin/env python\n'),
-        CodePartition(CodeType.PRE_IMPORT_CODE, '# -*- coding: UTF-8 -*-\n'),
-        CodePartition(CodeType.PRE_IMPORT_CODE, '"""foo"""\n'),
-        CodePartition(CodeType.IMPORT, 'import os\n'),
-        CodePartition(CodeType.CODE, '\n\nx = 5\n'),
-    ]
-    assert apply_import_sorting(input_partitions) == input_partitions
+    imports = ['import os\n']
+    assert apply_import_sorting(imports) == imports
 
 
 def test_apply_import_sorting_sorts_imports():
     assert apply_import_sorting([
         # local imports
-        CodePartition(
-            CodeType.IMPORT, 'from reorder_python_imports import main\n',
-        ),
-        CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
+        'from reorder_python_imports import main\n',
+        'import reorder_python_imports\n',
         # site-package imports
-        CodePartition(CodeType.IMPORT, 'from six import text_type\n'),
-        CodePartition(CodeType.IMPORT, 'import aspy\n'),
+        'from six import text_type\n',
+        'import aspy\n',
         # System imports (out of order)
-        CodePartition(CodeType.IMPORT, 'from os import path\n'),
-        CodePartition(CodeType.IMPORT, 'import os\n'),
+        'from os import path\n',
+        'import os\n',
     ]) == [
-        CodePartition(CodeType.IMPORT, 'import os\n'),
-        CodePartition(CodeType.IMPORT, 'from os import path\n'),
-        CodePartition(CodeType.NON_CODE, '\n'),
-        CodePartition(CodeType.IMPORT, 'import aspy\n'),
-        CodePartition(CodeType.IMPORT, 'from six import text_type\n'),
-        CodePartition(CodeType.NON_CODE, '\n'),
-        CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
-        CodePartition(
-            CodeType.IMPORT, 'from reorder_python_imports import main\n',
-        ),
+        'import os\n',
+        'from os import path\n',
+        '\n',
+        'import aspy\n',
+        'from six import text_type\n',
+        '\n',
+        'import reorder_python_imports\n',
+        'from reorder_python_imports import main\n',
     ]
 
 
 def test_apply_import_sorting_sorts_imports_with_application_module():
     assert apply_import_sorting(
         [
-            CodePartition(CodeType.IMPORT, 'import _c_module\n'),
-            CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
-            CodePartition(CodeType.IMPORT, 'import third_party\n'),
+            'import _c_module\n',
+            'import reorder_python_imports\n',
+            'import third_party\n',
         ],
-        settings=Settings(
-            unclassifiable_application_modules=('_c_module',),
-        ),
+        settings=Settings(unclassifiable_application_modules=('_c_module',)),
     ) == [
-        CodePartition(CodeType.IMPORT, 'import third_party\n'),
-        CodePartition(CodeType.NON_CODE, '\n'),
-        CodePartition(CodeType.IMPORT, 'import _c_module\n'),
-        CodePartition(CodeType.IMPORT, 'import reorder_python_imports\n'),
+        'import third_party\n',
+        '\n',
+        'import _c_module\n',
+        'import reorder_python_imports\n',
     ]
 
 
 def test_apply_import_sorting_maintains_comments():
-    input_partitions = [
-        CodePartition(CodeType.IMPORT, 'import foo  # noqa\n'),
-    ]
-    assert apply_import_sorting(input_partitions) == input_partitions
-
-
-def test_apply_import_sorting_removes_padding_if_only_imports():
-    assert apply_import_sorting([
-        CodePartition(CodeType.IMPORT, 'import foo\n'),
-        CodePartition(CodeType.NON_CODE, '\n\n'),
-    ]) == [
-        CodePartition(CodeType.IMPORT, 'import foo\n'),
-    ]
+    imports = ['import foo  # noqa\n']
+    assert apply_import_sorting(imports) == imports
 
 
 def test_add_import_trivial():
@@ -729,7 +789,7 @@ cases = pytest.mark.parametrize(
 )
 
 
-@cases
+@ cases
 def test_fix_file_contents(s, expected):
     ret = fix_file_contents(
         s,
