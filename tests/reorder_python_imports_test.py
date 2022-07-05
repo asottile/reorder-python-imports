@@ -10,10 +10,10 @@ from classify_imports import Settings
 from reorder_python_imports import apply_import_sorting
 from reorder_python_imports import fix_file_contents
 from reorder_python_imports import main
+from reorder_python_imports import parse_imports
 from reorder_python_imports import partition_source
 from reorder_python_imports import remove_duplicated_imports
 from reorder_python_imports import Replacements
-from reorder_python_imports import separate_comma_imports
 
 
 @pytest.fixture
@@ -282,80 +282,93 @@ def test_partition_source_noreorder_keeps_whitespace_above():
     )
 
 
-def test_separate_comma_imports_trivial():
-    assert separate_comma_imports([]) == []
+@pytest.mark.parametrize(
+    ('imports', 'expected'),
+    (
+        pytest.param([], [], id='trivial'),
+        pytest.param(
+            ['import os\n', 'import sys\n'],
+            ['import os\n', 'import sys\n'],
+            id='nothing to separate',
+        ),
+        pytest.param(
+            ['import os, sys\n'],
+            ['import os\n', 'import sys\n'],
+            id='separates imports',
+        ),
+        pytest.param(
+            # can't know what the comment points to, so we just remove it
+            ['import os, sys  # derp\n'],
+            ['import os\n', 'import sys\n'],
+            id='separating removes comments',
+        ),
+        pytest.param(
+            ['import sys  # noqa\n'],
+            ['import sys  # noqa\n'],
+            id='comments preserved when not separating',
+        ),
+    ),
+)
+def test_parse_imports(imports, expected):
+    parsed = parse_imports(imports, to_add=())
+    unparsed = [s for s, _ in parsed]
+    assert unparsed == expected
 
 
-def test_separate_comma_imports_none_to_separate():
-    imports = ['import os\n', 'import six\n']
-    assert separate_comma_imports(imports) == imports
-
-
-def test_separate_comma_imports_separates_some():
-    imports = separate_comma_imports(['import os, sys\n'])
-    assert imports == ['import os\n', 'import sys\n']
-
-
-def test_separate_comma_imports_removes_comments():
-    # Since it's not really possible to know what the comma points to, we just
-    # remove it
-    imports = separate_comma_imports(['import os, sys  # derp\n'])
-    assert imports == ['import os\n', 'import sys\n']
-
-
-def test_separate_comma_imports_does_not_remove_comments_when_not_splitting():
-    imports = ['import sys  # noqa']
-    assert separate_comma_imports(imports) == imports
-
-
-def test_remove_duplicated_imports_trivial():
-    assert remove_duplicated_imports([], to_remove=set()) == []
-
-
-def test_remove_duplicated_imports_no_dupes_no_removals():
-    imports = [
-        'import sys\n'
-        'from six import text_type\n',
-    ]
-    assert remove_duplicated_imports(imports, to_remove=set()) == imports
-
-
-def test_remove_duplicated_imports_removes_duplicated():
-    imports = ['import sys\n', 'import sys\n']
-    expected = ['import sys\n']
-    assert remove_duplicated_imports(imports, to_remove=set()) == expected
-
-
-def test_remove_duplicate_redundant_import_imports():
-    imports = ['import os\n', 'import os.path\n']
-    expected = ['import os.path\n']
-
-    assert remove_duplicated_imports(imports, to_remove=set()) == expected
-    imports.reverse()
-    assert remove_duplicated_imports(imports, to_remove=set()) == expected
-
-
-def test_aliased_imports_not_considered_redundant():
-    imports = ['import os\n', 'import os.path as os_path\n']
-    assert remove_duplicated_imports(imports, to_remove=set()) == imports
-
-
-def test_aliased_imports_not_considered_redundant_v2():
-    imports = ['import os as osmod\n', 'import os.path\n']
-    assert remove_duplicated_imports(imports, to_remove=set()) == imports
+@pytest.mark.parametrize(
+    ('imports', 'expected'),
+    (
+        pytest.param([], [], id='trivial'),
+        pytest.param(
+            ['import sys\n', 'from six import text_type\n'],
+            ['import sys\n', 'from six import text_type\n'],
+            id='no duplicates removed',
+        ),
+        pytest.param(
+            ['import sys\n', 'import sys\n'],
+            ['import sys\n'],
+            id='removes exact duplicate',
+        ),
+        pytest.param(
+            ['import os\n', 'import os.path\n'],
+            ['import os.path\n'],
+            id='removes redundant import, keeps last',
+        ),
+        pytest.param(
+            ['import os.path\n', 'import os\n'],
+            ['import os.path\n'],
+            id='removes redundant import, keeps first',
+        ),
+        pytest.param(
+            ['import os\n', 'import os.path as os_path\n'],
+            ['import os\n', 'import os.path as os_path\n'],
+            id='aliased is not redundant, last aliased',
+        ),
+        pytest.param(
+            ['import os as osmod\n', 'import os.path\n'],
+            ['import os as osmod\n', 'import os.path\n'],
+            id='aliased is not redundant, first aliased',
+        ),
+    ),
+)
+def test_remove_duplicated_imports(imports, expected):
+    parsed = parse_imports(imports, to_add=())
+    ret = remove_duplicated_imports(parsed, to_remove=set())
+    unparsed = [s for s, _ in ret]
+    assert unparsed == expected
 
 
 def test_apply_import_sorting_trivial():
-    assert apply_import_sorting([]) == []
+    assert apply_import_sorting(parse_imports([], to_add=())) == []
 
 
 def test_apply_import_sorting_all_types():
     imports = ['import os\n']
-    assert apply_import_sorting(imports) == imports
+    assert apply_import_sorting(parse_imports(imports, to_add=())) == imports
 
 
 def test_apply_import_sorting_sorts_imports():
-    assert apply_import_sorting([
+    imports = [
         # local imports
         'from reorder_python_imports import main\n',
         'import reorder_python_imports\n',
@@ -365,7 +378,8 @@ def test_apply_import_sorting_sorts_imports():
         # System imports (out of order)
         'from os import path\n',
         'import os\n',
-    ]) == [
+    ]
+    expected = [
         'import os\n',
         'from os import path\n',
         '\n',
@@ -375,33 +389,37 @@ def test_apply_import_sorting_sorts_imports():
         'import reorder_python_imports\n',
         'from reorder_python_imports import main\n',
     ]
+    assert apply_import_sorting(parse_imports(imports, to_add=())) == expected
 
 
 def test_apply_import_sorting_sorts_imports_with_application_module():
-    assert apply_import_sorting(
-        [
-            'import _c_module\n',
-            'import reorder_python_imports\n',
-            'import third_party\n',
-        ],
-        settings=Settings(unclassifiable_application_modules=('_c_module',)),
-    ) == [
+    imports = [
+        'import _c_module\n',
+        'import reorder_python_imports\n',
+        'import third_party\n',
+    ]
+    expected = [
         'import third_party\n',
         '\n',
         'import _c_module\n',
         'import reorder_python_imports\n',
     ]
+    ret = apply_import_sorting(
+        parse_imports(imports, to_add=()),
+        settings=Settings(unclassifiable_application_modules=('_c_module',)),
+    )
+    assert ret == expected
 
 
 def test_apply_import_sorting_maintains_comments():
     imports = ['import foo  # noqa\n']
-    assert apply_import_sorting(imports) == imports
+    assert apply_import_sorting(parse_imports(imports)) == imports
 
 
 def test_add_import_trivial():
     assert fix_file_contents(
         '',
-        to_add=('from __future__ import absolute_import',),
+        to_add=('from __future__ import absolute_import\n',),
         to_remove=set(),
         to_replace=Replacements.make([]),
     ) == ''
@@ -410,7 +428,7 @@ def test_add_import_trivial():
 def test_add_imports_empty_file():
     assert fix_file_contents(
         '\n\n',
-        to_add=('from __future__ import absolute_import',),
+        to_add=('from __future__ import absolute_import\n',),
         to_remove=set(),
         to_replace=Replacements.make([]),
     ) == ''
@@ -419,7 +437,7 @@ def test_add_imports_empty_file():
 def test_add_import_import_already_there():
     assert fix_file_contents(
         'from __future__ import absolute_import\n',
-        to_add=('from __future__ import absolute_import',),
+        to_add=('from __future__ import absolute_import\n',),
         to_remove=set(),
         to_replace=Replacements.make([]),
     ) == 'from __future__ import absolute_import\n'
@@ -428,7 +446,7 @@ def test_add_import_import_already_there():
 def test_add_import_not_there():
     assert fix_file_contents(
         'import os',
-        to_add=('from __future__ import absolute_import',),
+        to_add=('from __future__ import absolute_import\n',),
         to_remove=set(),
         to_replace=Replacements.make([]),
     ) == (
@@ -441,7 +459,7 @@ def test_add_import_not_there():
 def test_does_not_put_before_leading_comment():
     assert fix_file_contents(
         '# -*- coding: UTF-8 -*-',
-        to_add=('from __future__ import absolute_import',),
+        to_add=('from __future__ import absolute_import\n',),
         to_remove=set(),
         to_replace=Replacements.make([]),
     ) == (
@@ -804,7 +822,7 @@ def test_fix_file_contents(s, expected):
     assert ret == expected
 
 
-@cases
+@ cases
 def test_integration_main(s, expected, tmpdir):
     test_file = tmpdir.join('test.py')
     test_file.write(s)
@@ -817,14 +835,14 @@ def test_integration_main(s, expected, tmpdir):
     assert test_file.read() == expected
 
 
-@pytest.fixture
+@ pytest.fixture
 def restore_sys_path():
     before = sys.path[:]
     yield
     sys.path[:] = before
 
 
-@pytest.mark.usefixtures('restore_sys_path')
+@ pytest.mark.usefixtures('restore_sys_path')
 def test_additional_directories_integration(in_tmpdir):
     if '' in sys.path:  # pragma: no cover (depends on run environment)
         sys.path.remove('')
@@ -911,7 +929,7 @@ def test_fix_mixed_uses_first_newline():
     )
 
 
-@pytest.mark.parametrize(
+@ pytest.mark.parametrize(
     ('opt', 'expected'),
     (
         (
@@ -984,7 +1002,7 @@ def test_py3_plus_rewrites_mock_mock(tmpdir):
     assert f.read() == 'from unittest.mock import ANY\n'
 
 
-@pytest.mark.xfail(reason='TODO')  # pragma: no cover (assert #2 doesn't run)
+@ pytest.mark.xfail(reason='TODO')  # pragma: no cover (assert #2 doesn't run)
 def test_py3_plus_rewrites_absolute_mock_to_relative_unittest_mock(tmpdir):
     f = tmpdir.join('f.py')
     f.write('import mock\n')
@@ -1048,8 +1066,8 @@ def test_py39_plus_rewrites_pep585_imports(tmpdir):
     assert f.read() == 'from collections.abc import Sequence\n'
 
 
-@pytest.mark.parametrize('opt', ('--add-import', '--remove-import'))
-@pytest.mark.parametrize('s', ('syntax error', '"import os"'))
+@ pytest.mark.parametrize('opt', ('--add-import', '--remove-import'))
+@ pytest.mark.parametrize('s', ('syntax error', '"import os"'))
 def test_invalid_add_remove_syntaxes(tmpdir, capsys, opt, s):
     f = tmpdir.join('f.py')
     f.write('import os\n')
@@ -1084,7 +1102,7 @@ def test_replace_module(tmpdir):
     assert f.read() == 'from urllib.parse import quote_plus\n'
 
 
-@pytest.mark.parametrize('s', ('invalid', 'too=many=equals'))
+@ pytest.mark.parametrize('s', ('invalid', 'too=many=equals'))
 def test_replace_module_invalid_arg(tmpdir, capsys, s):
     f = tmpdir.join('f.py')
     f.write('import os\n')
