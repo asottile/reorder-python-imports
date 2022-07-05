@@ -9,7 +9,6 @@ import os
 import sys
 import tokenize
 from typing import Generator
-from typing import Iterable
 from typing import NamedTuple
 from typing import Sequence
 
@@ -29,8 +28,6 @@ if (  # pragma: no branch
 
 CodeType = enum.Enum('CodeType', 'PRE_IMPORT_CODE IMPORT NON_CODE CODE')
 
-NON_COMBINABLE = (CodeType.IMPORT, CodeType.PRE_IMPORT_CODE)
-
 
 class CodePartition(NamedTuple):
     code_type: CodeType
@@ -42,11 +39,7 @@ TERMINATES_DOCSTRING = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
 TERMINATES_IMPORT = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
 
 
-def _partitions_to_src(partitions: Iterable[CodePartition]) -> str:
-    return ''.join(part.src for part in partitions)
-
-
-def partition_source(src: str) -> list[CodePartition]:
+def partition_source(src: str) -> tuple[str, list[str], str]:
     sio = io.StringIO(src, newline=None)
     lines = list(sio)
     sio.seek(0)
@@ -116,45 +109,41 @@ def partition_source(src: str) -> list[CodePartition]:
             chunks.append(CodePartition(CodeType.CODE, srctext))
             break
 
-    # combine any trailing code chunks
-    ret = [chunk for chunk in chunks if chunk.src]
+    last_idx = 0
+    for i, part in enumerate(chunks):
+        if part.code_type in (CodeType.PRE_IMPORT_CODE, CodeType.IMPORT):
+            last_idx = i
+
+    pre = []
+    imports = []
     code = []
-    while ret and ret[-1].code_type not in NON_COMBINABLE:
-        code.append(ret.pop())
-    if code:
-        code_src = _partitions_to_src(reversed(code))
-        ret.append(CodePartition(CodeType.CODE, code_src))
+    for i, part in enumerate(chunks):
+        if part.code_type is CodeType.PRE_IMPORT_CODE:
+            pre.append(part.src)
+        elif part.code_type is CodeType.IMPORT:
+            imports.append(part.src)
+        elif part.code_type is CodeType.CODE or i > last_idx:
+            code.append(part.src)
 
-    return ret
+    return ''.join(pre), imports, ''.join(code)
 
 
-def separate_comma_imports(
-        partitions: Iterable[CodePartition],
-) -> list[CodePartition]:
+def separate_comma_imports(imports: list[str]) -> list[str]:
     """Turns `import a, b` into `import a` and `import b`"""
-    def _inner() -> Generator[CodePartition, None, None]:
-        for partition in partitions:
-            if partition.code_type is CodeType.IMPORT:
-                obj = import_obj_from_str(partition.src)
-                if obj.is_multiple:
-                    for new_obj in obj.split():
-                        yield CodePartition(CodeType.IMPORT, str(new_obj))
-                else:
-                    yield partition
+    def _inner() -> Generator[str, None, None]:
+        for s in imports:
+            obj = import_obj_from_str(s)
+            if obj.is_multiple:
+                for new_obj in obj.split():
+                    yield str(new_obj)
             else:
-                yield partition
+                yield s
 
     return list(_inner())
 
 
-def add_imports(
-        partitions: list[CodePartition],
-        to_add: tuple[str, ...] = (),
-) -> list[CodePartition]:
-    return partitions + [
-        CodePartition(CodeType.IMPORT, imp_statement.strip() + '\n')
-        for imp_statement in to_add
-    ]
+def add_imports(imports: list[str], to_add: tuple[str, ...] = ()) -> list[str]:
+    return imports + [f'{s.strip()}\n' for s in to_add]
 
 
 class Replacements(NamedTuple):
@@ -188,75 +177,69 @@ class Replacements(NamedTuple):
         return cls(exact=exact, mods=mods)
 
 
-def replace_imports(
-        partitions: Iterable[CodePartition],
-        to_replace: Replacements,
-) -> list[CodePartition]:
-    def _inner() -> Generator[CodePartition, None, None]:
-        for partition in partitions:
-            if partition.code_type is CodeType.IMPORT:
-                import_obj = import_obj_from_str(partition.src)
+def replace_imports(imports: list[str], to_replace: Replacements) -> list[str]:
+    def _inner() -> Generator[str, None, None]:
+        for s in imports:
+            import_obj = import_obj_from_str(s)
 
-                # cannot rewrite import-imports: makes undefined names
-                if isinstance(import_obj, Import):
-                    yield partition
-                    continue
+            # cannot rewrite import-imports: makes undefined names
+            if isinstance(import_obj, Import):
+                yield s
+                continue
 
-                mod, symbol, asname = import_obj.key
-                mod_symbol = f'{mod}.{symbol}'
+            mod, symbol, asname = import_obj.key
+            mod_symbol = f'{mod}.{symbol}'
 
-                # from a.b.c import d => from e.f.g import d
-                if (mod, symbol) in to_replace.exact:
+            # from a.b.c import d => from e.f.g import d
+            if (mod, symbol) in to_replace.exact:
+                node = ast.ImportFrom(
+                    module=to_replace.exact[mod, symbol],
+                    names=import_obj.node.names,
+                    level=0,
+                )
+                yield str(ImportFrom(node))
+            # from a.b.c import d as e => from f import g as e
+            # from a.b.c import d as e => import f as e
+            # from a.b import c => import c
+            elif (
+                    mod_symbol in to_replace.mods and
+                    (asname or to_replace.mods[mod_symbol] == symbol)
+            ):
+                new_mod = to_replace.mods[mod_symbol]
+                new_mod, dot, new_sym = new_mod.rpartition('.')
+                if new_mod:
                     node = ast.ImportFrom(
-                        module=to_replace.exact[mod, symbol],
-                        names=import_obj.node.names,
+                        module=new_mod,
+                        names=[ast.alias(new_sym, asname)],
                         level=0,
                     )
-                    yield partition._replace(src=str(ImportFrom(node)))
-                # from a.b.c import d as e => from f import g as e
-                # from a.b.c import d as e => import f as e
-                # from a.b import c => import c
-                elif (
-                        mod_symbol in to_replace.mods and
-                        (asname or to_replace.mods[mod_symbol] == symbol)
-                ):
-                    new_mod = to_replace.mods[mod_symbol]
-                    new_mod, dot, new_sym = new_mod.rpartition('.')
-                    if new_mod:
+                    yield str(ImportFrom(node))
+                elif not dot:
+                    node_i = ast.Import(names=[ast.alias(new_sym, asname)])
+                    yield str(Import(node_i))
+                else:
+                    yield s
+            # from a.b.c import d => from e import d
+            elif mod in to_replace.mods:
+                node = ast.ImportFrom(
+                    module=to_replace.mods[mod],
+                    names=import_obj.node.names,
+                    level=0,
+                )
+                yield str(ImportFrom(node))
+            else:
+                for mod_name in _module_to_base_modules(mod):
+                    if mod_name in to_replace.mods:
+                        new_mod = to_replace.mods[mod_name]
                         node = ast.ImportFrom(
-                            module=new_mod,
-                            names=[ast.alias(new_sym, asname)],
+                            module=f'{new_mod}{mod[len(mod_name):]}',
+                            names=import_obj.node.names,
                             level=0,
                         )
-                        yield partition._replace(src=str(ImportFrom(node)))
-                    elif not dot:
-                        node_i = ast.Import(names=[ast.alias(new_sym, asname)])
-                        yield partition._replace(src=str(Import(node_i)))
-                    else:
-                        yield partition
-                # from a.b.c import d => from e import d
-                elif mod in to_replace.mods:
-                    node = ast.ImportFrom(
-                        module=to_replace.mods[mod],
-                        names=import_obj.node.names,
-                        level=0,
-                    )
-                    yield partition._replace(src=str(ImportFrom(node)))
+                        yield str(ImportFrom(node))
+                        break
                 else:
-                    for mod_name in _module_to_base_modules(mod):
-                        if mod_name in to_replace.mods:
-                            new_mod = to_replace.mods[mod_name]
-                            node = ast.ImportFrom(
-                                module=f'{new_mod}{mod[len(mod_name):]}',
-                                names=import_obj.node.names,
-                                level=0,
-                            )
-                            yield partition._replace(src=str(ImportFrom(node)))
-                            break
-                    else:
-                        yield partition
-            else:
-                yield partition
+                    yield s
     return list(_inner())
 
 
@@ -270,89 +253,62 @@ def _module_to_base_modules(s: str) -> Generator[str, None, None]:
 
 
 def remove_duplicated_imports(
-        partitions: Iterable[CodePartition],
+        imports: list[str],
         *,
         to_remove: set[tuple[str, ...]],
-) -> list[CodePartition]:
+) -> list[str]:
     seen = set(to_remove)
     seen_module_names: set[str] = set()
     without_exact_duplicates = []
 
-    for partition in partitions:
-        if partition.code_type is CodeType.IMPORT:
-            import_obj = import_obj_from_str(partition.src)
-            if import_obj.key not in seen:
-                seen.add(import_obj.key)
-                if (
-                        isinstance(import_obj, Import) and
-                        not import_obj.key.asname
-                ):
-                    seen_module_names.update(
-                        _module_to_base_modules(import_obj.module),
-                    )
-                without_exact_duplicates.append(partition)
-        else:
-            without_exact_duplicates.append(partition)
-
-    out_partitions = []
-    for partition in without_exact_duplicates:
-        if partition.code_type is CodeType.IMPORT:
-            import_obj = import_obj_from_str(partition.src)
+    for s in imports:
+        import_obj = import_obj_from_str(s)
+        if import_obj.key not in seen:
+            seen.add(import_obj.key)
             if (
                     isinstance(import_obj, Import) and
-                    not import_obj.key.asname and
-                    import_obj.key.module in seen_module_names
+                    not import_obj.key.asname
             ):
-                continue
-        out_partitions.append(partition)
+                seen_module_names.update(
+                    _module_to_base_modules(import_obj.module),
+                )
+            without_exact_duplicates.append(s)
 
-    return out_partitions
+    ret = []
+    for s in without_exact_duplicates:
+        import_obj = import_obj_from_str(s)
+        if (
+                isinstance(import_obj, Import) and
+                not import_obj.key.asname and
+                import_obj.key.module in seen_module_names
+        ):
+            continue
+        ret.append(s)
+
+    return ret
 
 
 def apply_import_sorting(
-        partitions: Iterable[CodePartition],
+        imports: list[str],
         settings: Settings = Settings(),
-) -> list[CodePartition]:
-    pre_import_code: list[CodePartition] = []
-    imports: list[CodePartition] = []
-    trash: list[CodePartition] = []
-    rest: list[CodePartition] = []
-    for partition in partitions:
-        {
-            CodeType.PRE_IMPORT_CODE: pre_import_code,
-            CodeType.IMPORT: imports,
-            CodeType.NON_CODE: trash,
-            CodeType.CODE: rest,
-        }[partition.code_type].append(partition)
+) -> list[str]:
+    import_obj_to_s = {import_obj_from_str(s): s for s in imports}
 
-    # Need to give an import a newline if it doesn't have one (needed for no
-    # EOL)
-    imports = [
-        partition if partition.src.endswith('\n') else
-        CodePartition(CodeType.IMPORT, partition.src + '\n')
-        for partition in imports
-    ]
-
-    import_obj_to_partition = {
-        import_obj_from_str(partition.src): partition
-        for partition in imports
-    }
+    sorted_blocks = sort(import_obj_to_s, settings=settings)
 
     new_imports = []
-
-    sorted_blocks = sort(import_obj_to_partition.keys(), settings=settings)
     for block in sorted_blocks:
         for import_obj in block:
-            new_imports.append(import_obj_to_partition[import_obj])
+            new_imports.append(import_obj_to_s[import_obj])
 
-        new_imports.append(CodePartition(CodeType.NON_CODE, '\n'))
+        new_imports.append('\n')
 
     # XXX: I want something like [x].join(...) (like str join) but for now
     # this works
     if new_imports:
         new_imports.pop()
 
-    return pre_import_code + new_imports + rest
+    return new_imports
 
 
 def _first_line_ending(s: str) -> str:
@@ -381,14 +337,14 @@ def fix_file_contents(
     else:
         return ''
 
-    partitioned = partition_source(contents)
-    partitioned = add_imports(partitioned, to_add=to_add)
-    partitioned = separate_comma_imports(partitioned)
-    partitioned = replace_imports(partitioned, to_replace=to_replace)
-    partitioned = remove_duplicated_imports(partitioned, to_remove=to_remove)
-    partitioned = apply_import_sorting(partitioned, settings=settings)
+    before, imports, after = partition_source(contents)
+    imports = add_imports(imports, to_add=to_add)
+    imports = separate_comma_imports(imports)
+    imports = replace_imports(imports, to_replace=to_replace)
+    imports = remove_duplicated_imports(imports, to_remove=to_remove)
+    imports = apply_import_sorting(imports, settings=settings)
 
-    return _partitions_to_src(partitioned).replace('\n', nl)
+    return f'{before}{"".join(imports)}{after}'.replace('\n', nl)
 
 
 def _fix_file(
