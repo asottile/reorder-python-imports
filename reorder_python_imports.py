@@ -6,6 +6,7 @@ import collections
 import enum
 import io
 import os
+import re
 import sys
 import tokenize
 from typing import Generator
@@ -18,15 +19,44 @@ from classify_imports import ImportFrom
 from classify_imports import Settings
 from classify_imports import sort
 
-# this is a performance hack.  see https://bugs.python.org/issue43014
-if (  # pragma: no branch
-        sys.version_info < (3, 10) and
-        callable(getattr(tokenize, '_compile', None))
-):  # pragma: <3.10 cover
-    from functools import lru_cache
-    tokenize._compile = lru_cache()(tokenize._compile)  # type: ignore
-
 CodeType = enum.Enum('CodeType', 'PRE_IMPORT_CODE IMPORT NON_CODE CODE')
+
+Tok = enum.Enum('Tok', 'IMPORT STRING NEWLINE ERROR')
+
+
+def _pat(base: str, pats: tuple[str, ...]) -> re.Pattern[str]:
+    return re.compile(
+        fr'{base}'
+        fr'(?:{"|".join(pats)})*'
+        fr'(?P<comment>(?:{tokenize.Comment})?)'
+        fr'(?:\n|$)',
+    )
+
+
+WS = r'[ \f\t]+'
+IMPORT = fr'(?:from|import)(?={WS})'
+EMPTY = fr'[ \f\t]*(?=\n|{tokenize.Comment})'
+OP = '[(),.*]'
+ESCAPED_NL = r'\\\n'
+
+TOKENIZE: tuple[tuple[Tok, re.Pattern[str]], ...] = (
+    (Tok.IMPORT, _pat(IMPORT, (WS, tokenize.Name, OP, ESCAPED_NL))),
+    (Tok.STRING, _pat(tokenize.String, (WS, tokenize.String, ESCAPED_NL))),
+    (Tok.NEWLINE, _pat(EMPTY, ())),
+)
+
+
+def _tokenize(s: str) -> Generator[tuple[Tok, str, int], None, None]:
+    pos = 0
+    while True:
+        for tp, reg in TOKENIZE:
+            match = reg.match(s, pos)
+            if match is not None:
+                pos = match.end()
+                yield (tp, match['comment'], pos)
+                break
+        else:
+            yield (Tok.ERROR, '', pos)
 
 
 class CodePartition(NamedTuple):
@@ -34,79 +64,39 @@ class CodePartition(NamedTuple):
     src: str
 
 
-TERMINATES_COMMENT = frozenset((tokenize.NL, tokenize.ENDMARKER))
-TERMINATES_DOCSTRING = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
-TERMINATES_IMPORT = frozenset((tokenize.NEWLINE, tokenize.ENDMARKER))
-
-
 def partition_source(src: str) -> tuple[str, list[str], str]:
-    sio = io.StringIO(src, newline=None)
-    lines = list(sio)
-    sio.seek(0)
+    src = io.StringIO(src, newline=None).read()
 
     chunks = []
-    startline = 0
-    pending_chunk_type = None
-    possible_ending_tokens = None
+    startpos = 0
     seen_import = False
-    for (
-            token_type, token_text, (srow, scol), (erow, ecol), _,
-    ) in tokenize.generate_tokens(sio.readline):
-        # Searching for a start of a chunk
-        if pending_chunk_type is None:
-            if not seen_import and token_type == tokenize.COMMENT:
-                if 'noreorder' in token_text:
-                    srctext = ''.join(lines[startline:])
-                    chunks.append(CodePartition(CodeType.CODE, srctext))
-                    break
+    for token_type, comment, end in _tokenize(src):  # pragma: no branch
+        if 'noreorder' in comment:
+            chunks.append(CodePartition(CodeType.CODE, src[startpos:]))
+            break
+        elif not seen_import and token_type is Tok.STRING:
+            srctext = src[startpos:end]
+            startpos = end
+            chunks.append(CodePartition(CodeType.PRE_IMPORT_CODE, srctext))
+        elif token_type is Tok.IMPORT:
+            seen_import = True
+            srctext = src[startpos:end]
+            startpos = end
+            chunks.append(CodePartition(CodeType.IMPORT, srctext))
+        elif token_type is Tok.NEWLINE:
+            srctext = src[startpos:end]
+            startpos = end
+            if comment:
+                if not seen_import:
+                    tp = CodeType.PRE_IMPORT_CODE
                 else:
-                    pending_chunk_type = CodeType.PRE_IMPORT_CODE
-                    possible_ending_tokens = TERMINATES_COMMENT
-            elif not seen_import and token_type == tokenize.STRING:
-                pending_chunk_type = CodeType.PRE_IMPORT_CODE
-                possible_ending_tokens = TERMINATES_DOCSTRING
-            elif (
-                    scol == 0 and
-                    token_type == tokenize.NAME and
-                    token_text in {'from', 'import'}
-            ):
-                seen_import = True
-                pending_chunk_type = CodeType.IMPORT
-                possible_ending_tokens = TERMINATES_IMPORT
-            elif token_type == tokenize.NL:
-                # A NL token is a non-important newline, we'll immediately
-                # append a NON_CODE partition
-                srctext = ''.join(lines[startline:erow])
-                startline = erow
-                chunks.append(CodePartition(CodeType.NON_CODE, srctext))
-            elif token_type == tokenize.COMMENT:
-                if 'noreorder' in token_text:
-                    srctext = ''.join(lines[startline:])
-                    chunks.append(CodePartition(CodeType.CODE, srctext))
-                    break
-                else:
-                    pending_chunk_type = CodeType.CODE
-                    possible_ending_tokens = TERMINATES_COMMENT
-            elif token_type == tokenize.ENDMARKER:
-                # Token ended right before end of file or file was empty
-                pass
+                    tp = CodeType.CODE
             else:
-                # We've reached a `CODE` block, which spans the rest of the
-                # file (intentionally timid).  Let's append that block and be
-                # done
-                srctext = ''.join(lines[startline:])
-                chunks.append(CodePartition(CodeType.CODE, srctext))
-                break
-        # Attempt to find ending of token
-        elif token_type in possible_ending_tokens:
-            srctext = ''.join(lines[startline:erow])
-            startline = erow
-            chunks.append(CodePartition(pending_chunk_type, srctext))
-            pending_chunk_type = None
-            possible_ending_tokens = None
-        elif token_type == tokenize.COMMENT and 'noreorder' in token_text:
-            srctext = ''.join(lines[startline:])
-            chunks.append(CodePartition(CodeType.CODE, srctext))
+                tp = CodeType.NON_CODE
+
+            chunks.append(CodePartition(tp, srctext))
+        else:
+            chunks.append(CodePartition(CodeType.CODE, src[startpos:]))
             break
 
     last_idx = 0
