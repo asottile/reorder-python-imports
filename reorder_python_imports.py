@@ -39,7 +39,7 @@ IMPORT = fr'(?:from|import)(?={WS})'
 EMPTY = fr'[ \f\t]*(?=\n|{tokenize.Comment})'
 OP = '[,.*]'
 ESCAPED_NL = r'\\\n'
-NAMES = fr'\((?:\s+|[,*]|{tokenize.Name}|{ESCAPED_NL}|{tokenize.Comment})*\)'
+NAMES = fr'\((?:\s+|,|{tokenize.Name}|{ESCAPED_NL}|{tokenize.Comment})*\)'
 
 TOKENIZE: tuple[tuple[Tok, re.Pattern[str]], ...] = (
     (Tok.IMPORT, _pat(IMPORT, (WS, tokenize.Name, OP, ESCAPED_NL, NAMES))),
