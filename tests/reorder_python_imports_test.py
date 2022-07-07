@@ -140,6 +140,20 @@ def test_partition_source_code_only_adds_newline():
             ['import os\n', 'import sys\n'],
             id='discards trailing whitespace within imports',
         ),
+        pytest.param(
+            'from foo import (\n'
+            '    bar,\n'
+            ')\n',
+            ['from foo import (\n    bar,\n)\n'],
+            id='multiline imports',
+        ),
+        pytest.param(
+            'from foo import (  # c1 )\n'
+            '    bar,  # c2 )\n'
+            ')  # c3\n',
+            ['from foo import (  # c1 )\n    bar,  # c2 )\n)  # c3\n'],
+            id='multiline imports with comments',
+        ),
     ),
 )
 def test_partition_source_imports_only(s, expected):

@@ -37,11 +37,12 @@ def _pat(base: str, pats: tuple[str, ...]) -> re.Pattern[str]:
 WS = r'[ \f\t]+'
 IMPORT = fr'(?:from|import)(?={WS})'
 EMPTY = fr'[ \f\t]*(?=\n|{tokenize.Comment})'
-OP = '[(),.*]'
+OP = '[,.*]'
 ESCAPED_NL = r'\\\n'
+NAMES = fr'\((?:\s+|[,*]|{tokenize.Name}|{ESCAPED_NL}|{tokenize.Comment})*\)'
 
 TOKENIZE: tuple[tuple[Tok, re.Pattern[str]], ...] = (
-    (Tok.IMPORT, _pat(IMPORT, (WS, tokenize.Name, OP, ESCAPED_NL))),
+    (Tok.IMPORT, _pat(IMPORT, (WS, tokenize.Name, OP, ESCAPED_NL, NAMES))),
     (Tok.STRING, _pat(tokenize.String, (WS, tokenize.String, ESCAPED_NL))),
     (Tok.NEWLINE, _pat(EMPTY, ())),
 )
