@@ -312,11 +312,11 @@ def fix_file_contents(
         to_replace: Replacements,
         settings: Settings = Settings(),
 ) -> str:
+    if not contents or contents.isspace():
+        return ''
+
     # internally use `'\n` as the newline and normalize at the very end
     before, imports, after, nl = partition_source(contents)
-
-    if not before and not imports and not after:
-        return ''
 
     parsed = parse_imports(imports, to_add=to_add)
     parsed = replace_imports(parsed, to_replace=to_replace)
