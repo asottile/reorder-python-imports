@@ -43,58 +43,57 @@ NAMES = fr'\((?:\s+|,|{tokenize.Name}|{ESCAPED_NL}|{tokenize.Comment})*\)'
 
 TOKENIZE: tuple[tuple[Tok, re.Pattern[str]], ...] = (
     (Tok.IMPORT, _pat(IMPORT, (WS, tokenize.Name, OP, ESCAPED_NL, NAMES))),
-    (Tok.STRING, _pat(tokenize.String, (WS, tokenize.String, ESCAPED_NL))),
     (Tok.NEWLINE, _pat(EMPTY, ())),
+    (Tok.STRING, _pat(tokenize.String, (WS, tokenize.String, ESCAPED_NL))),
 )
 
 
-def _tokenize(s: str) -> Generator[tuple[Tok, str, int], None, None]:
+def _tokenize(s: str) -> Generator[tuple[Tok, str], None, None]:
     pos = 0
     while True:
         for tp, reg in TOKENIZE:
             match = reg.match(s, pos)
             if match is not None:
+                if 'noreorder' in match['comment']:
+                    yield (Tok.ERROR, s[pos:])
+                else:
+                    yield (tp, match[0])
                 pos = match.end()
-                yield (tp, match['comment'], pos)
                 break
         else:
-            yield (Tok.ERROR, '', pos)
+            yield (Tok.ERROR, s[pos:])
 
 
 def partition_source(src: str) -> tuple[str, list[str], str, str]:
     sio = io.StringIO(src, newline=None)
     src = sio.read().rstrip() + '\n'
 
-    chunks = []
-    startpos = 0
-    seen_import = False
-    for token_type, comment, end in _tokenize(src):  # pragma: no branch
-        if 'noreorder' in comment:
-            chunks.append((CodeType.CODE, src[startpos:]))
-            break
-        elif not seen_import and token_type is Tok.STRING:
-            srctext = src[startpos:end]
-            startpos = end
-            chunks.append((CodeType.PRE_IMPORT_CODE, srctext))
-        elif token_type is Tok.IMPORT:
-            seen_import = True
-            srctext = src[startpos:end]
-            startpos = end
-            chunks.append((CodeType.IMPORT, srctext))
-        elif token_type is Tok.NEWLINE:
-            srctext = src[startpos:end]
-            startpos = end
-            if comment:
-                if not seen_import:
-                    tp = CodeType.PRE_IMPORT_CODE
-                else:
-                    tp = CodeType.CODE
-            else:
-                tp = CodeType.NON_CODE
+    if sio.newlines is None:
+        nl = '\n'
+    elif isinstance(sio.newlines, str):
+        nl = sio.newlines
+    else:
+        nl = sio.newlines[0]
 
-            chunks.append((tp, srctext))
+    chunks = []
+    pre_import = True
+    for token_type, s in _tokenize(src):  # pragma: no branch
+        if token_type is Tok.IMPORT:
+            pre_import = False
+            chunks.append((CodeType.IMPORT, s))
+        elif token_type is Tok.NEWLINE:
+            if s.isspace():
+                tp = CodeType.NON_CODE
+            elif pre_import:
+                tp = CodeType.PRE_IMPORT_CODE
+            else:
+                tp = CodeType.CODE
+
+            chunks.append((tp, s))
+        elif pre_import and token_type is Tok.STRING:
+            chunks.append((CodeType.PRE_IMPORT_CODE, s))
         else:
-            chunks.append((CodeType.CODE, src[startpos:]))
+            chunks.append((CodeType.CODE, s))
             break
 
     last_idx = 0
@@ -112,13 +111,6 @@ def partition_source(src: str) -> tuple[str, list[str], str, str]:
             imports.append(src)
         elif tp is CodeType.CODE or i > last_idx:
             code.append(src)
-
-    if sio.newlines is None:
-        nl = '\n'
-    elif isinstance(sio.newlines, str):
-        nl = sio.newlines
-    else:
-        nl = sio.newlines[0]
 
     return ''.join(pre), imports, ''.join(code), nl
 
