@@ -60,11 +60,6 @@ def _tokenize(s: str) -> Generator[tuple[Tok, str, int], None, None]:
             yield (Tok.ERROR, '', pos)
 
 
-class CodePartition(NamedTuple):
-    code_type: CodeType
-    src: str
-
-
 def partition_source(src: str) -> tuple[str, list[str], str, str]:
     sio = io.StringIO(src, newline=None)
     src = sio.read().rstrip() + '\n'
@@ -74,17 +69,17 @@ def partition_source(src: str) -> tuple[str, list[str], str, str]:
     seen_import = False
     for token_type, comment, end in _tokenize(src):  # pragma: no branch
         if 'noreorder' in comment:
-            chunks.append(CodePartition(CodeType.CODE, src[startpos:]))
+            chunks.append((CodeType.CODE, src[startpos:]))
             break
         elif not seen_import and token_type is Tok.STRING:
             srctext = src[startpos:end]
             startpos = end
-            chunks.append(CodePartition(CodeType.PRE_IMPORT_CODE, srctext))
+            chunks.append((CodeType.PRE_IMPORT_CODE, srctext))
         elif token_type is Tok.IMPORT:
             seen_import = True
             srctext = src[startpos:end]
             startpos = end
-            chunks.append(CodePartition(CodeType.IMPORT, srctext))
+            chunks.append((CodeType.IMPORT, srctext))
         elif token_type is Tok.NEWLINE:
             srctext = src[startpos:end]
             startpos = end
@@ -96,26 +91,26 @@ def partition_source(src: str) -> tuple[str, list[str], str, str]:
             else:
                 tp = CodeType.NON_CODE
 
-            chunks.append(CodePartition(tp, srctext))
+            chunks.append((tp, srctext))
         else:
-            chunks.append(CodePartition(CodeType.CODE, src[startpos:]))
+            chunks.append((CodeType.CODE, src[startpos:]))
             break
 
     last_idx = 0
-    for i, part in enumerate(chunks):
-        if part.code_type in (CodeType.PRE_IMPORT_CODE, CodeType.IMPORT):
+    for i, (tp, _) in enumerate(chunks):
+        if tp in (CodeType.PRE_IMPORT_CODE, CodeType.IMPORT):
             last_idx = i
 
     pre = []
     imports = []
     code = []
-    for i, part in enumerate(chunks):
-        if part.code_type is CodeType.PRE_IMPORT_CODE:
-            pre.append(part.src)
-        elif part.code_type is CodeType.IMPORT:
-            imports.append(part.src)
-        elif part.code_type is CodeType.CODE or i > last_idx:
-            code.append(part.src)
+    for i, (tp, src) in enumerate(chunks):
+        if tp is CodeType.PRE_IMPORT_CODE:
+            pre.append(src)
+        elif tp is CodeType.IMPORT:
+            imports.append(src)
+        elif tp is CodeType.CODE or i > last_idx:
+            code.append(src)
 
     if sio.newlines is None:
         nl = '\n'
