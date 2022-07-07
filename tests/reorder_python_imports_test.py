@@ -845,7 +845,7 @@ cases = pytest.mark.parametrize(
 )
 
 
-@ cases
+@cases
 def test_fix_file_contents(s, expected):
     ret = fix_file_contents(
         s,
@@ -856,7 +856,7 @@ def test_fix_file_contents(s, expected):
     assert ret == expected
 
 
-@ cases
+@cases
 def test_integration_main(s, expected, tmpdir):
     test_file = tmpdir.join('test.py')
     test_file.write(s)
@@ -869,14 +869,14 @@ def test_integration_main(s, expected, tmpdir):
     assert test_file.read() == expected
 
 
-@ pytest.fixture
+@pytest.fixture
 def restore_sys_path():
     before = sys.path[:]
     yield
     sys.path[:] = before
 
 
-@ pytest.mark.usefixtures('restore_sys_path')
+@pytest.mark.usefixtures('restore_sys_path')
 def test_additional_directories_integration(in_tmpdir):
     if '' in sys.path:  # pragma: no cover (depends on run environment)
         sys.path.remove('')
@@ -963,7 +963,7 @@ def test_fix_mixed_uses_first_newline():
     )
 
 
-@ pytest.mark.parametrize(
+@pytest.mark.parametrize(
     ('opt', 'expected'),
     (
         (
@@ -1036,7 +1036,7 @@ def test_py3_plus_rewrites_mock_mock(tmpdir):
     assert f.read() == 'from unittest.mock import ANY\n'
 
 
-@ pytest.mark.xfail(reason='TODO')  # pragma: no cover (assert #2 doesn't run)
+@pytest.mark.xfail(reason='TODO')  # pragma: no cover (assert #2 doesn't run)
 def test_py3_plus_rewrites_absolute_mock_to_relative_unittest_mock(tmpdir):
     f = tmpdir.join('f.py')
     f.write('import mock\n')
@@ -1100,8 +1100,8 @@ def test_py39_plus_rewrites_pep585_imports(tmpdir):
     assert f.read() == 'from collections.abc import Sequence\n'
 
 
-@ pytest.mark.parametrize('opt', ('--add-import', '--remove-import'))
-@ pytest.mark.parametrize('s', ('syntax error', '"import os"'))
+@pytest.mark.parametrize('opt', ('--add-import', '--remove-import'))
+@pytest.mark.parametrize('s', ('syntax error', '"import os"'))
 def test_invalid_add_remove_syntaxes(tmpdir, capsys, opt, s):
     f = tmpdir.join('f.py')
     f.write('import os\n')
@@ -1136,7 +1136,7 @@ def test_replace_module(tmpdir):
     assert f.read() == 'from urllib.parse import quote_plus\n'
 
 
-@ pytest.mark.parametrize('s', ('invalid', 'too=many=equals'))
+@pytest.mark.parametrize('s', ('invalid', 'too=many=equals'))
 def test_replace_module_invalid_arg(tmpdir, capsys, s):
     f = tmpdir.join('f.py')
     f.write('import os\n')
