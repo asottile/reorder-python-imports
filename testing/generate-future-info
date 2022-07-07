@@ -24,12 +24,15 @@ def main() -> int:
         by_version[version].append(k)
 
     print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
-    for v_k, v in sorted(by_version.items()):
-        s = f'from __future__ import {", ".join(sorted(v))}'
-        line = f'REMOVALS[{v_k}].add({s!r})'
-        if len(line) >= 79:
-            line = f'{line}  # noqa: E501'
-        print(line)
+    for version, names in sorted(by_version.items()):
+        if len(names) == 1:
+            s = f'from __future__ import {names[0]}'
+            print(f'REMOVALS[{version}].add({s!r})')
+        else:
+            print(f'REMOVALS[{version}].update((')
+            for name in names:
+                print(f"    'from __future__ import {name}',")
+            print('))')
     print('# END GENERATED')
 
     return 0

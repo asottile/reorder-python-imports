@@ -385,7 +385,12 @@ REMOVALS[(3,)].add('from io import open')
 REMOVALS[(2, 2)].add('from __future__ import nested_scopes')
 REMOVALS[(2, 3)].add('from __future__ import generators')
 REMOVALS[(2, 6)].add('from __future__ import with_statement')
-REMOVALS[(3,)].add('from __future__ import absolute_import, division, print_function, unicode_literals')  # noqa: E501
+REMOVALS[(3,)].update((
+    'from __future__ import division',
+    'from __future__ import absolute_import',
+    'from __future__ import print_function',
+    'from __future__ import unicode_literals',
+))
 REMOVALS[(3, 7)].add('from __future__ import generator_stop')
 # END GENERATED
 
@@ -746,11 +751,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         for s in args.remove_import
         for obj in import_obj_from_str(s).split()
     } | {
-        obj.key
+        import_obj_from_str(s).key
         for k, v in REMOVALS.items()
         if args.min_version >= k
         for s in v
-        for obj in import_obj_from_str(s).split()
     }
 
     for k, v in REPLACES.items():
