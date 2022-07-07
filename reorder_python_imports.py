@@ -248,9 +248,10 @@ def _module_to_base_modules(s: str) -> Generator[str, None, None]:
     """return all module names that would be imported due to this
     import-import
     """
-    parts = s.split('.')
-    for i in range(1, len(parts)):
-        yield '.'.join(parts[:i])
+    s = s.rpartition('.')[0]
+    while s:
+        yield s
+        s = s.rpartition('.')[0]
 
 
 def remove_duplicated_imports(
