@@ -5,6 +5,7 @@ import ast
 import collections
 import enum
 import io
+import itertools
 import os
 import re
 import sys
@@ -133,14 +134,7 @@ def parse_imports(
 ) -> list[tuple[str, Import | ImportFrom]]:
     ret = []
 
-    for s in to_add:
-        obj = import_obj_from_str(s)
-        if not obj.is_multiple:
-            ret.append((s, obj))
-        else:
-            ret.extend((str(new), new) for new in obj.split())
-
-    for s in imports:
+    for s in itertools.chain(to_add, imports):
         obj = import_obj_from_str(s)
         if not obj.is_multiple:
             ret.append((s, obj))
