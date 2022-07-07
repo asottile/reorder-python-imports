@@ -469,18 +469,10 @@ def test_apply_import_sorting_maintains_comments():
     assert apply_import_sorting(parse_imports(imports)) == imports
 
 
-def test_add_import_trivial():
+@pytest.mark.parametrize('s', ('', '\n', '\n\n\n'))
+def test_add_imports_empty_file(s):
     assert fix_file_contents(
-        '',
-        to_add=('from __future__ import absolute_import\n',),
-        to_remove=set(),
-        to_replace=Replacements.make([]),
-    ) == ''
-
-
-def test_add_imports_empty_file():
-    assert fix_file_contents(
-        '\n\n',
+        s,
         to_add=('from __future__ import absolute_import\n',),
         to_remove=set(),
         to_replace=Replacements.make([]),
