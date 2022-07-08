@@ -785,6 +785,17 @@ cases = pytest.mark.parametrize(
             id='comment in imports',
         ),
         pytest.param(
+            'import os\n'
+            '"""misplaced docstring"""\n'
+            'import sys\n',
+
+            'import os\n'
+            'import sys\n'
+            '"""misplaced docstring"""\n',
+
+            id='docstring in imports',
+        ),
+        pytest.param(
             "# I'm a license comment\n"
             'import os\n',
 

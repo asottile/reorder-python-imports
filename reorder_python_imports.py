@@ -66,12 +66,14 @@ def _tokenize(s: str) -> Generator[tuple[Tok, str], None, None]:
             if match is not None:
                 if 'noreorder' in match['comment']:
                     yield (Tok.ERROR, s[pos:])
+                    return
                 else:
                     yield (tp, match[0])
                 pos = match.end()
                 break
         else:
             yield (Tok.ERROR, s[pos:])
+            return
 
 
 def partition_source(src: str) -> tuple[str, list[str], str, str]:
@@ -87,7 +89,7 @@ def partition_source(src: str) -> tuple[str, list[str], str, str]:
 
     chunks = []
     pre_import = True
-    for token_type, s in _tokenize(src):  # pragma: no branch
+    for token_type, s in _tokenize(src):
         if token_type is Tok.IMPORT:
             pre_import = False
             chunks.append((CodeType.IMPORT, s))
@@ -104,7 +106,6 @@ def partition_source(src: str) -> tuple[str, list[str], str, str]:
             chunks.append((CodeType.PRE_IMPORT_CODE, s))
         else:
             chunks.append((CodeType.CODE, s))
-            break
 
     last_idx = 0
     for i, (tp, _) in enumerate(chunks):
