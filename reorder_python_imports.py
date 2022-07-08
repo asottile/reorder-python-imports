@@ -9,7 +9,6 @@ import itertools
 import os
 import re
 import sys
-import tokenize
 from typing import Generator
 from typing import NamedTuple
 from typing import Sequence
@@ -24,27 +23,38 @@ CodeType = enum.Enum('CodeType', 'PRE_IMPORT_CODE IMPORT NON_CODE CODE')
 
 Tok = enum.Enum('Tok', 'IMPORT STRING NEWLINE ERROR')
 
+# GENERATED VIA generate-tokenize
+COMMENT = r'#[^\r\n]*'
+NAME = r'\w+'
+PREFIX = r'[RrUu]?'
+DOUBLE_3 = r'"""[^"\\]*(?:(?:\\.|"(?!""))[^"\\]*)*"""'
+SINGLE_3 = r"'''[^'\\]*(?:(?:\\.|'(?!''))[^'\\]*)*'''"
+DOUBLE_1 = r'"[^"\\]*(?:\\.[^"\\]*)*"'
+SINGLE_1 = r"'[^'\\]*(?:\\.[^'\\]*)*'"
+# END GENERATED
+
+WS = r'[ \f\t]+'
+IMPORT = fr'(?:from|import)(?={WS})'
+EMPTY = fr'[ \f\t]*(?=\n|{COMMENT})'
+OP = '[,.*]'
+ESCAPED_NL = r'\\\n'
+NAMES = fr'\((?:\s+|,|{NAME}|{ESCAPED_NL}|{COMMENT})*\)'
+STRING = fr'{PREFIX}(?:{DOUBLE_3}|{SINGLE_3}|{DOUBLE_1}|{SINGLE_1})'
+
 
 def _pat(base: str, pats: tuple[str, ...]) -> re.Pattern[str]:
     return re.compile(
         fr'{base}'
         fr'(?:{"|".join(pats)})*'
-        fr'(?P<comment>(?:{tokenize.Comment})?)'
+        fr'(?P<comment>(?:{COMMENT})?)'
         fr'(?:\n|$)',
     )
 
 
-WS = r'[ \f\t]+'
-IMPORT = fr'(?:from|import)(?={WS})'
-EMPTY = fr'[ \f\t]*(?=\n|{tokenize.Comment})'
-OP = '[,.*]'
-ESCAPED_NL = r'\\\n'
-NAMES = fr'\((?:\s+|,|{tokenize.Name}|{ESCAPED_NL}|{tokenize.Comment})*\)'
-
 TOKENIZE: tuple[tuple[Tok, re.Pattern[str]], ...] = (
-    (Tok.IMPORT, _pat(IMPORT, (WS, tokenize.Name, OP, ESCAPED_NL, NAMES))),
+    (Tok.IMPORT, _pat(IMPORT, (WS, NAME, OP, ESCAPED_NL, NAMES))),
     (Tok.NEWLINE, _pat(EMPTY, ())),
-    (Tok.STRING, _pat(tokenize.String, (WS, tokenize.String, ESCAPED_NL))),
+    (Tok.STRING, _pat(STRING, (WS, STRING, ESCAPED_NL))),
 )
 
 
