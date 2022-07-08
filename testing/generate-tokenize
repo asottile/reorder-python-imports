@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import ast
+import os.path
+import sys
+import tokenize
+
+
+def raw(s: str) -> str:
+    for q in ("'", '"'):
+        as_raw = f'r{q}{s}{q}'
+        try:
+            if ast.literal_eval(as_raw) == s:
+                return as_raw
+        except SyntaxError:
+            continue
+    else:
+        return repr(s)
+
+
+def main() -> int:
+    # only want the prefixes that can be docstrings
+    string_prefix = '[RrUu]?'
+
+    double_3 = f'"""{tokenize.Double3}'
+    single_3 = f"'''{tokenize.Single3}"
+    double_1 = f'"{tokenize.Double}'
+    single_1 = f"'{tokenize.Single}"
+
+    print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
+    print(f'COMMENT = {raw(tokenize.Comment)}')
+    print(f'NAME = {raw(tokenize.Name)}')
+    print(f'PREFIX = {raw(string_prefix)}')
+    print(f'DOUBLE_3 = {raw(double_3)}')
+    print(f'SINGLE_3 = {raw(single_3)}')
+    print(f'DOUBLE_1 = {raw(double_1)}')
+    print(f'SINGLE_1 = {raw(single_1)}')
+    print('# END GENERATED')
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

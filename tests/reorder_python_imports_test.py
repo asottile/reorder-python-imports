@@ -14,12 +14,23 @@ from reorder_python_imports import parse_imports
 from reorder_python_imports import partition_source
 from reorder_python_imports import remove_duplicated_imports
 from reorder_python_imports import Replacements
+from reorder_python_imports import Tok
+from reorder_python_imports import TOKENIZE
 
 
 @pytest.fixture
 def in_tmpdir(tmpdir):
     with tmpdir.as_cwd():
         yield tmpdir
+
+
+@pytest.mark.parametrize(
+    's', ("''", '""', 'r"hi"', 'u"hello"', '"""hello\nworld"""', "'''\n'''"),
+)
+def test_tokenize_can_match_strings(s):
+    tp, pat = TOKENIZE[-1]
+    assert tp == Tok.STRING
+    assert pat.fullmatch(s)
 
 
 @pytest.mark.parametrize(
