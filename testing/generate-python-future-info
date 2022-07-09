@@ -9,7 +9,6 @@ import future.builtins
 
 
 def main() -> int:
-
     names = sorted(
         k for k, v in vars(future.builtins).items()
         if getattr(builtins, k, None) is v
