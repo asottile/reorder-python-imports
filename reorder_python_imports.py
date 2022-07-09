@@ -181,7 +181,6 @@ def replace_imports(
     ret = []
 
     for s, import_obj in imports:
-        # cannot rewrite import-imports: makes undefined names
         if isinstance(import_obj, Import):
             mod, asname = import_obj.key
             if asname:
