@@ -7,6 +7,7 @@ from unittest import mock
 
 import pytest
 from classify_imports import Settings
+
 from reorder_python_imports import apply_import_sorting
 from reorder_python_imports import fix_file_contents
 from reorder_python_imports import main
