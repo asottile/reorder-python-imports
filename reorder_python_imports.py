@@ -630,7 +630,7 @@ REPLACES[(3,)].update((
 ))
 # END GENERATED
 
-# GENERATED VIA generate-collections-info
+# GENERATED VIA generate-deprecated
 REPLACES[(3,)].update((
     'collections=collections.abc:AsyncGenerator',
     'collections=collections.abc:AsyncIterable',
@@ -657,6 +657,7 @@ REPLACES[(3,)].update((
     'collections=collections.abc:Set',
     'collections=collections.abc:Sized',
     'collections=collections.abc:ValuesView',
+    'xml.etree.cElementTree=xml.etree.ElementTree',
 ))
 # END GENERATED
 

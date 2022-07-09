@@ -1099,6 +1099,13 @@ def test_py3_plus_rewrites_collections_abc(tmpdir):
     assert f.read() == 'from collections.abc import Mapping\n'
 
 
+def test_py3_plus_rewrites_cElementTree(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from xml.etree.cElementTree import ElementTree\n')
+    assert main((str(f), '--py3-plus'))
+    assert f.read() == 'from xml.etree.ElementTree import ElementTree\n'
+
+
 def test_py3_plus_removes_python_future_imports(tmpdir):
     f = tmpdir.join('f.py')
     f.write('from builtins import str\n')
