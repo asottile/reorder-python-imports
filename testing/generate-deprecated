@@ -11,6 +11,7 @@ def main() -> int:
     print('REPLACES[(3,)].update((')
     for k in sorted(collections.abc.__all__):
         print(f"    'collections=collections.abc:{k}',")
+    print("    'xml.etree.cElementTree=xml.etree.ElementTree',")
     print('))')
     print('# END GENERATED')
 
