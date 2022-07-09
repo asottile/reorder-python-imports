@@ -183,67 +183,88 @@ def replace_imports(
     for s, import_obj in imports:
         # cannot rewrite import-imports: makes undefined names
         if isinstance(import_obj, Import):
-            ret.append((s, import_obj))
-            continue
+            mod, asname = import_obj.key
+            if asname:
+                if mod in to_replace.mods:
+                    node_i = ast.Import(
+                        names=[ast.alias(to_replace.mods[mod], asname)],
+                    )
+                    obj_i = Import(node_i)
+                    ret.append((str(obj_i), obj_i))
+                else:
+                    for mod_name in _module_to_base_modules(mod):
+                        if mod_name in to_replace.mods:
+                            new_mod = to_replace.mods[mod_name]
+                            new_mod_s = f'{new_mod}{mod[len(mod_name):]}'
+                            node_i = ast.Import(
+                                names=[ast.alias(new_mod_s, asname)],
+                            )
+                            obj_i = Import(node_i)
+                            ret.append((str(obj_i), obj_i))
+                            break
+                    else:
+                        ret.append((s, import_obj))
+            else:
+                ret.append((s, import_obj))
+        else:
+            mod, symbol, asname = import_obj.key
+            mod_symbol = f'{mod}.{symbol}'
 
-        mod, symbol, asname = import_obj.key
-        mod_symbol = f'{mod}.{symbol}'
-
-        # from a.b.c import d => from e.f.g import d
-        if (mod, symbol) in to_replace.exact:
-            node = ast.ImportFrom(
-                module=to_replace.exact[mod, symbol],
-                names=import_obj.node.names,
-                level=0,
-            )
-            obj = ImportFrom(node)
-            ret.append((str(obj), obj))
-        # from a.b.c import d as e => from f import g as e
-        # from a.b.c import d as e => import f as e
-        # from a.b import c => import c
-        elif (
-                mod_symbol in to_replace.mods and
-                (asname or to_replace.mods[mod_symbol] == symbol)
-        ):
-            new_mod = to_replace.mods[mod_symbol]
-            new_mod, dot, new_sym = new_mod.rpartition('.')
-            if new_mod:
+            # from a.b.c import d => from e.f.g import d
+            if (mod, symbol) in to_replace.exact:
                 node = ast.ImportFrom(
-                    module=new_mod,
-                    names=[ast.alias(new_sym, asname)],
+                    module=to_replace.exact[mod, symbol],
+                    names=import_obj.node.names,
                     level=0,
                 )
                 obj = ImportFrom(node)
                 ret.append((str(obj), obj))
-            elif not dot:
-                node_i = ast.Import(names=[ast.alias(new_sym, asname)])
-                obj_i = Import(node_i)
-                ret.append((str(obj_i), obj_i))
-            else:
-                ret.append((s, import_obj))
-        # from a.b.c import d => from e import d
-        elif mod in to_replace.mods:
-            node = ast.ImportFrom(
-                module=to_replace.mods[mod],
-                names=import_obj.node.names,
-                level=0,
-            )
-            obj = ImportFrom(node)
-            ret.append((str(obj), obj))
-        else:
-            for mod_name in _module_to_base_modules(mod):
-                if mod_name in to_replace.mods:
-                    new_mod = to_replace.mods[mod_name]
+            # from a.b.c import d as e => from f import g as e
+            # from a.b.c import d as e => import f as e
+            # from a.b import c => import c
+            elif (
+                    mod_symbol in to_replace.mods and
+                    (asname or to_replace.mods[mod_symbol] == symbol)
+            ):
+                new_mod = to_replace.mods[mod_symbol]
+                new_mod, dot, new_sym = new_mod.rpartition('.')
+                if new_mod:
                     node = ast.ImportFrom(
-                        module=f'{new_mod}{mod[len(mod_name):]}',
-                        names=import_obj.node.names,
+                        module=new_mod,
+                        names=[ast.alias(new_sym, asname)],
                         level=0,
                     )
                     obj = ImportFrom(node)
                     ret.append((str(obj), obj))
-                    break
+                elif not dot:
+                    node_i = ast.Import(names=[ast.alias(new_sym, asname)])
+                    obj_i = Import(node_i)
+                    ret.append((str(obj_i), obj_i))
+                else:
+                    ret.append((s, import_obj))
+            # from a.b.c import d => from e import d
+            elif mod in to_replace.mods:
+                node = ast.ImportFrom(
+                    module=to_replace.mods[mod],
+                    names=import_obj.node.names,
+                    level=0,
+                )
+                obj = ImportFrom(node)
+                ret.append((str(obj), obj))
             else:
-                ret.append((s, import_obj))
+                for mod_name in _module_to_base_modules(mod):
+                    if mod_name in to_replace.mods:
+                        new_mod = to_replace.mods[mod_name]
+                        node = ast.ImportFrom(
+                            module=f'{new_mod}{mod[len(mod_name):]}',
+                            names=import_obj.node.names,
+                            level=0,
+                        )
+                        obj = ImportFrom(node)
+                        ret.append((str(obj), obj))
+                        break
+                else:
+                    ret.append((s, import_obj))
 
     return ret
 

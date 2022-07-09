@@ -757,6 +757,36 @@ def test_replace_module_skips_nonmatching_rules():
     assert ret == 'from libthree import util\n'
 
 
+def test_replace_import_import_with_asname():
+    ret = fix_file_contents(
+        'import a.b as c\n',
+        to_add=(),
+        to_remove=set(),
+        to_replace=Replacements.make([('a.b', 'd.e', '')]),
+    )
+    assert ret == 'import d.e as c\n'
+
+
+def test_replace_import_import_prefix_with_asname():
+    ret = fix_file_contents(
+        'import a.b as c\n',
+        to_add=(),
+        to_remove=set(),
+        to_replace=Replacements.make([('a', 'd', '')]),
+    )
+    assert ret == 'import d.b as c\n'
+
+
+def test_replace_import_unrelated_import_with_asname():
+    ret = fix_file_contents(
+        'import something.unrelated as c\n',
+        to_add=(),
+        to_remove=set(),
+        to_replace=Replacements.make([('a', 'd', '')]),
+    )
+    assert ret == 'import something.unrelated as c\n'
+
+
 cases = pytest.mark.parametrize(
     ('s', 'expected'),
     (
