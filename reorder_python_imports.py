@@ -685,6 +685,7 @@ REPLACES[(3,)].update((
     'collections=collections.abc:Set',
     'collections=collections.abc:Sized',
     'collections=collections.abc:ValuesView',
+    'pipes=shlex:quote',
     'xml.etree.cElementTree=xml.etree.ElementTree',
 ))
 # END GENERATED
