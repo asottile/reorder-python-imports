@@ -1136,6 +1136,13 @@ def test_py3_plus_rewrites_cElementTree(tmpdir):
     assert f.read() == 'from xml.etree.ElementTree import ElementTree\n'
 
 
+def test_py3_plus_rewrites_pipes_quote(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from pipes import quote\n')
+    assert main((str(f), '--py3-plus'))
+    assert f.read() == 'from shlex import quote\n'
+
+
 def test_py3_plus_removes_python_future_imports(tmpdir):
     f = tmpdir.join('f.py')
     f.write('from builtins import str\n')
