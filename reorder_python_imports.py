@@ -619,7 +619,7 @@ REPLACES[(3,)].update((
 # END GENERATED
 
 # GENERATED VIA generate-mock-info
-# Using mock==4.0.3
+# up until cpython 3.10.0
 REPLACES[(3,)].update((
     'mock.mock=unittest.mock:ANY',
     'mock.mock=unittest.mock:DEFAULT',
@@ -647,6 +647,14 @@ REPLACES[(3,)].update((
     'mock=unittest.mock:mock_open',
     'mock=unittest.mock:patch',
     'mock=unittest.mock:sentinel',
+))
+REPLACES[(3, 7)].update((
+    'mock.mock=unittest.mock:seal',
+    'mock=unittest.mock:seal',
+))
+REPLACES[(3, 8)].update((
+    'mock.mock=unittest.mock:AsyncMock',
+    'mock=unittest.mock:AsyncMock',
 ))
 # END GENERATED
 

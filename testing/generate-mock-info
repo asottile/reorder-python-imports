@@ -1,35 +1,54 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
+import ast
 import os
+import re
+import subprocess
 import sys
-import unittest.mock
+
+ALL_RE = re.compile(r'__all__ = (\([^)]+\))')
+
+
+def _get_all(cpython: str, version: str) -> frozenset[str]:
+    cmd = ('git', '-C', cpython, 'show', f'{version}:Lib/unittest/mock.py')
+    out = subprocess.check_output(cmd, stderr=subprocess.DEVNULL).decode()
+    match = ALL_RE.search(out)
+    assert match is not None
+    return frozenset(ast.literal_eval(match[1]))
 
 
 def main() -> int:
-    assert sys.version_info[:2] == (3, 6), 'needs py36'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('cpython')
+    args = parser.parse_args()
 
-    mock = __import__('mock')  # avoid self-rewriting!
+    prev = _get_all(args.cpython, 'v3.3.0')
+    to_add: dict[tuple[int, ...], frozenset[str]] = {(3,): prev}
 
-    mock_all, mock_version = mock.__all__, mock.__version__
-    unittest_mock_all = unittest.mock.__all__
+    for minor in range(6, 999):
+        try:
+            new = _get_all(args.cpython, f'v3.{minor}.0')
+        except subprocess.CalledProcessError:
+            break
 
-    attrs = set(mock_all).intersection(unittest_mock_all)
+        if new != prev:
+            to_add[(3, minor)] = new - prev
+            prev = new
 
-    renames_s = '\n'.join(
-        sorted(
-            f"    '{orig_mod}=unittest.mock:{attr}',"
-            for orig_mod in ('mock', 'mock.mock')
-            for attr in attrs
-        ),
-    )
-
-    print(
-        f'# GENERATED VIA {os.path.basename(sys.argv[0])}\n'
-        f'# Using mock=={mock_version}\n'
-        f'REPLACES[(3,)].update((\n{renames_s}\n))\n'
-        f'# END GENERATED\n',
-    )
+    print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
+    print(f'# up until cpython 3.{minor - 1}.0')
+    for k, v in sorted(to_add.items()):
+        print(f'REPLACES[{k}].update((')
+        for s in sorted(
+                f"    '{orig_mod}=unittest.mock:{attr}',"
+                for orig_mod in ('mock', 'mock.mock')
+                for attr in v
+        ):
+            print(s)
+        print('))')
+    print('# END GENERATED')
 
     return 0
 
