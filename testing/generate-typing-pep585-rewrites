@@ -15,6 +15,8 @@ def main() -> int:
         if hasattr(value, '__origin__')
         # TODO: still can't support symbol renaming
         if value.__origin__.__name__ == name
+        # https://github.com/python/cpython/issues/87131
+        if name != 'Callable'
     ] + [
         f'typing.re={value.__origin__.__module__}:{name}'
         for name, value in vars(typing.re).items()
@@ -28,6 +30,7 @@ def main() -> int:
     for rename in sorted(renames, key=lambda s: s.split('=')):
         print(f'    {rename!r},')
     print('))')
+    print("REPLACES[(3, 10)].add('typing=collections.abc:Callable')")
     print('# END GENERATED')
 
     return 0

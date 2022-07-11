@@ -480,7 +480,6 @@ REPLACES[(3, 9)].update((
     'typing=collections.abc:AsyncIterator',
     'typing=collections.abc:Awaitable',
     'typing=collections.abc:ByteString',
-    'typing=collections.abc:Callable',
     'typing=collections.abc:Collection',
     'typing=collections.abc:Container',
     'typing=collections.abc:Coroutine',
@@ -507,6 +506,7 @@ REPLACES[(3, 9)].update((
     'typing.re=re:Match',
     'typing.re=re:Pattern',
 ))
+REPLACES[(3, 10)].add('typing=collections.abc:Callable')
 # END GENERATED
 
 # GENERATED VIA generate-python-future-info

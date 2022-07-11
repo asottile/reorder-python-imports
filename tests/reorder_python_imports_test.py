@@ -1178,6 +1178,14 @@ def test_py39_plus_rewrites_pep585_imports(tmpdir):
     assert f.read() == 'from collections.abc import Sequence\n'
 
 
+def test_typing_callable_not_rewritten_until_3_10(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('from typing import Callable\n')
+    assert not main((str(f), '--py39-plus'))
+    assert main((str(f), '--py310-plus'))
+    assert f.read() == 'from collections.abc import Callable\n'
+
+
 @pytest.mark.parametrize('opt', ('--add-import', '--remove-import'))
 @pytest.mark.parametrize('s', ('syntax error', '"import os"'))
 def test_invalid_add_remove_syntaxes(tmpdir, capsys, opt, s):
