@@ -421,7 +421,7 @@ REMOVALS[(3, 7)].add('from __future__ import generator_stop')
 # Using:
 #     flake8-typing-imports==1.12.0
 #     mypy_extensions==0.4.3
-#     typing_extensions==4.0.1
+#     typing_extensions==4.3.0
 REPLACES[(3, 7)].update((
     'mypy_extensions=typing:NoReturn',
 ))
@@ -441,7 +441,6 @@ REPLACES[(3, 6)].update((
     'typing_extensions=typing:Text',
     'typing_extensions=typing:Type',
     'typing_extensions=typing:get_type_hints',
-    'typing_extensions=typing:overload',
 ))
 REPLACES[(3, 7)].update((
     'typing_extensions=typing:AsyncContextManager',
@@ -449,6 +448,7 @@ REPLACES[(3, 7)].update((
     'typing_extensions=typing:ChainMap',
     'typing_extensions=typing:Counter',
     'typing_extensions=typing:Deque',
+    'typing_extensions=typing:NoReturn',
 ))
 REPLACES[(3, 8)].update((
     'typing_extensions=typing:Final',
@@ -456,10 +456,6 @@ REPLACES[(3, 8)].update((
     'typing_extensions=typing:OrderedDict',
     'typing_extensions=typing:Protocol',
     'typing_extensions=typing:SupportsIndex',
-    'typing_extensions=typing:TypedDict',
-    'typing_extensions=typing:final',
-    'typing_extensions=typing:get_args',
-    'typing_extensions=typing:get_origin',
     'typing_extensions=typing:runtime_checkable',
 ))
 REPLACES[(3, 9)].update((
@@ -468,8 +464,13 @@ REPLACES[(3, 9)].update((
 REPLACES[(3, 10)].update((
     'typing_extensions=typing:Concatenate',
     'typing_extensions=typing:ParamSpec',
+    'typing_extensions=typing:ParamSpecArgs',
+    'typing_extensions=typing:ParamSpecKwargs',
     'typing_extensions=typing:TypeAlias',
     'typing_extensions=typing:TypeGuard',
+    'typing_extensions=typing:get_args',
+    'typing_extensions=typing:get_origin',
+    'typing_extensions=typing:is_typeddict',
 ))
 # END GENERATED
 
