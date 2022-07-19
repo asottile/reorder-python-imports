@@ -420,14 +420,8 @@ REMOVALS[(3, 7)].add('from __future__ import generator_stop')
 # GENERATED VIA generate-typing-rewrite-info
 # Using:
 #     flake8-typing-imports==1.12.0
-#     mypy_extensions==0.4.3
-#     typing_extensions==4.3.0
-REPLACES[(3, 7)].update((
-    'mypy_extensions=typing:NoReturn',
-))
-REPLACES[(3, 8)].update((
-    'mypy_extensions=typing:TypedDict',
-))
+#     mypy-extensions==0.4.3
+#     typing-extensions==4.3.0
 REPLACES[(3, 6)].update((
     'typing_extensions=typing:AsyncIterable',
     'typing_extensions=typing:AsyncIterator',
@@ -443,6 +437,7 @@ REPLACES[(3, 6)].update((
     'typing_extensions=typing:get_type_hints',
 ))
 REPLACES[(3, 7)].update((
+    'mypy_extensions=typing:NoReturn',
     'typing_extensions=typing:AsyncContextManager',
     'typing_extensions=typing:AsyncGenerator',
     'typing_extensions=typing:ChainMap',
@@ -451,6 +446,7 @@ REPLACES[(3, 7)].update((
     'typing_extensions=typing:NoReturn',
 ))
 REPLACES[(3, 8)].update((
+    'mypy_extensions=typing:TypedDict',
     'typing_extensions=typing:Final',
     'typing_extensions=typing:Literal',
     'typing_extensions=typing:OrderedDict',
