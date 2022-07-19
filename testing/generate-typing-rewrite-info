@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import collections
 import os
 import sys
-from collections import defaultdict
 
 import flake8_typing_imports
 import mypy_extensions
@@ -50,53 +50,50 @@ def main() -> int:
         for attr in attrs:
             min_contiguous_versions.setdefault(attr, v)
 
-    symbols: dict[flake8_typing_imports.Version, set[str]] = defaultdict(set)
+    symbols = collections.defaultdict(set)
     for a, v in min_contiguous_versions.items():
         symbols[v].add(a)
 
     # --pyXX-plus assumes the min --pyXX so group symbols by their
     # rounded up major version
-    symbols_rounded_up: dict[tuple[int, int], set[str]] = defaultdict(set)
+    symbols_rounded_up: dict[tuple[int, int], set[str]]
+    symbols_rounded_up = collections.defaultdict(set)
     for v, attrs in sorted(symbols.items()):
         symbols_rounded_up[v.major, v.minor + int(v.patch != 0)] |= attrs
 
     # combine 3.5 and 3.6 because this lib is 3.7+
     symbols_rounded_up[(3, 6)] |= symbols_rounded_up.pop((3, 5))
 
-    deltas: dict[tuple[int, int], set[str]] = defaultdict(set)
+    deltas = collections.defaultdict(set)
     prev: set[str] = set()
     for v, attrs in sorted(symbols_rounded_up.items()):
         deltas[v] = attrs - prev
         prev = attrs
 
-    mypy_extensions_added: dict[tuple[int, int], set[str]] = {}
-    typing_extensions_added: dict[tuple[int, int], set[str]] = defaultdict(set)
+    replaces: dict[tuple[int, int], set[str]] = collections.defaultdict(set)
     for v, attrs in deltas.items():
-        mypy_extensions_added[v] = attrs & mypy_extensions_all
-        typing_extensions_added[v] = attrs & typing_extensions_all
+        replaces[v] |= {
+            f'mypy_extensions=typing:{s}'
+            for s in attrs & mypy_extensions_all
+        } | {
+            f'typing_extensions=typing:{s}'
+            for s in attrs & typing_extensions_all
+        }
     for v, attrs in CUSTOM_TYPING_EXT_SYMBOLS.items():
-        typing_extensions_added[v] |= attrs
+        replaces[v] |= {f'typing_extensions=typing:{s}' for s in attrs}
 
     print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
     print('# Using:')
     print(f'#     flake8-typing-imports=={flake8_typing_imports_version}')
-    print(f'#     mypy_extensions=={mypy_extensions_version}')
-    print(f'#     typing_extensions=={typing_extensions_version}')
+    print(f'#     mypy-extensions=={mypy_extensions_version}')
+    print(f'#     typing-extensions=={typing_extensions_version}')
 
-    for k, v in sorted(mypy_extensions_added.items()):
+    for k, v in sorted(replaces.items()):
         if not v:
             continue
         print(f'REPLACES[{k}].update((')
-        for symbol in sorted(v):
-            print(f"    'mypy_extensions=typing:{symbol}',")
-        print('))')
-
-    for k, v in sorted(typing_extensions_added.items()):
-        if not v:
-            continue
-        print(f'REPLACES[{k}].update((')
-        for symbol in sorted(v):
-            print(f"    'typing_extensions=typing:{symbol}',")
+        for replace in sorted(v):
+            print(f'    {replace!r},')
         print('))')
 
     print('# END GENERATED')
