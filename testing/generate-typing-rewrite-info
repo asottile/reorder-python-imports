@@ -15,6 +15,20 @@ else:
     from importlib_metadata import version
 
 
+# --- typing_extensions notes ---
+# https://github.com/python/typing_extensions#other-notes-and-limitations
+# - get_origin and get_args lack support for Annotated in Python 3.8
+#   and lack support for ParamSpecArgs and ParamSpecKwargs in 3.9.
+# - Starting with 3.11, NamedTuple and TypedDict can inherit from Generic
+# - @final was changed in Python 3.11 to set the .__final__ attribute
+# - @overload was changed in Python 3.11 to make function overloads
+#   introspectable at runtime.
+CUSTOM_TYPING_EXT_SYMBOLS = {
+    (3, 10): {'get_origin', 'get_args'},
+    (3, 11): {'NamedTuple', 'TypedDict', 'final', 'overload'},
+}
+
+
 def main() -> int:
     flake8_typing_imports_version = version('flake8-typing-imports')
     mypy_extensions_version = version('mypy_extensions')
@@ -23,7 +37,9 @@ def main() -> int:
     mypy_extensions_all = frozenset(
         a for a in dir(mypy_extensions) if a != 'Any'
     )
-    typing_extensions_all = frozenset(typing_extensions.__all__)
+    typing_extensions_all = frozenset(typing_extensions.__all__) - {
+        sym for v in CUSTOM_TYPING_EXT_SYMBOLS.values() for sym in v
+    }
 
     # some attrs are removed and then added back
     min_contiguous_versions: dict[str, flake8_typing_imports.Version] = {}
@@ -53,11 +69,13 @@ def main() -> int:
         deltas[v] = attrs - prev
         prev = attrs
 
-    mypy_extensions_added: dict[tuple[int, int], list[str]] = {}
-    typing_extensions_added: dict[tuple[int, int], list[str]] = {}
+    mypy_extensions_added: dict[tuple[int, int], set[str]] = {}
+    typing_extensions_added: dict[tuple[int, int], set[str]] = defaultdict(set)
     for v, attrs in deltas.items():
-        mypy_extensions_added[v] = sorted(attrs & mypy_extensions_all)
-        typing_extensions_added[v] = sorted(attrs & typing_extensions_all)
+        mypy_extensions_added[v] = attrs & mypy_extensions_all
+        typing_extensions_added[v] = attrs & typing_extensions_all
+    for v, attrs in CUSTOM_TYPING_EXT_SYMBOLS.items():
+        typing_extensions_added[v] |= attrs
 
     print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
     print('# Using:')
