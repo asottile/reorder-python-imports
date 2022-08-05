@@ -11,7 +11,9 @@ uses static analysis more.
 
 ## Installation
 
-`pip install reorder-python-imports`
+```bash
+pip install reorder-python-imports
+```
 
 
 ## Console scripts
