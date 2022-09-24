@@ -419,7 +419,7 @@ REMOVALS[(3, 7)].add('from __future__ import generator_stop')
 
 # GENERATED VIA generate-typing-rewrite-info
 # Using:
-#     flake8-typing-imports==1.12.0
+#     flake8-typing-imports==1.13.0
 #     mypy-extensions==0.4.3
 #     typing-extensions==4.3.0
 REPLACES[(3, 6)].update((
@@ -434,7 +434,6 @@ REPLACES[(3, 6)].update((
     'typing_extensions=typing:TYPE_CHECKING',
     'typing_extensions=typing:Text',
     'typing_extensions=typing:Type',
-    'typing_extensions=typing:get_type_hints',
 ))
 REPLACES[(3, 7)].update((
     'mypy_extensions=typing:NoReturn',
@@ -456,6 +455,7 @@ REPLACES[(3, 8)].update((
 ))
 REPLACES[(3, 9)].update((
     'typing_extensions=typing:Annotated',
+    'typing_extensions=typing:get_type_hints',
 ))
 REPLACES[(3, 10)].update((
     'typing_extensions=typing:Concatenate',

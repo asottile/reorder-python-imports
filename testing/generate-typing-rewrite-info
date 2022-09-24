@@ -17,6 +17,7 @@ else:
 
 # --- typing_extensions notes ---
 # https://github.com/python/typing_extensions#other-notes-and-limitations
+# - Starting with Python 3.9, get_type_hints() has the include_extra parameter
 # - get_origin and get_args lack support for Annotated in Python 3.8
 #   and lack support for ParamSpecArgs and ParamSpecKwargs in 3.9.
 # - Starting with 3.11, NamedTuple and TypedDict can inherit from Generic
@@ -24,6 +25,7 @@ else:
 # - @overload was changed in Python 3.11 to make function overloads
 #   introspectable at runtime.
 CUSTOM_TYPING_EXT_SYMBOLS = {
+    (3, 9): {'get_type_hints'},
     (3, 10): {'get_origin', 'get_args'},
     (3, 11): {'NamedTuple', 'TypedDict', 'final', 'overload'},
 }
