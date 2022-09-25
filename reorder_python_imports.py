@@ -733,6 +733,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument('--exit-zero-even-if-changed', action='store_true')
     parser.add_argument(
+        '--no-exit-zero-even-if-changed', action='store_false',
+        dest='exit_zero_even_if_changed', help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         '--add-import', action='append', default=[], type=_validate_import,
         help='Import to add to each file.  Can be specified multiple times.',
     )

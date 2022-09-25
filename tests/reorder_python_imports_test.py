@@ -1280,6 +1280,20 @@ def test_exit_zero_even_if_changed(tmpdir):
     assert not main((str(f), '--exit-zero-even-if-changed'))
 
 
+def test_no_exit_zero_even_if_changed(tmpdir):
+    f = tmpdir.join('t.py')
+    f.write('import os,sys')
+    assert main((str(f), '--no-exit-zero-even-if-changed'))
+    assert f.read() == 'import os\nimport sys\n'
+    assert main((str(f), '--no-exit-zero-even-if-changed'))
+    assert main((
+        str(f), '--exit-zero-even-if-changed --no-exit-zero-even-if-changed',
+    ))
+    assert not main((
+        str(f), '--no-exit-zero-even-if-changed --exit-zero-even-if-changed',
+    ))
+
+
 def test_success_messages_are_printed_on_stderr(tmpdir, capsys):
     f = tmpdir.join('f.py')
     f.write('import os,sys')
