@@ -24,10 +24,15 @@ else:
 # - @final was changed in Python 3.11 to set the .__final__ attribute
 # - @overload was changed in Python 3.11 to make function overloads
 #   introspectable at runtime.
+# - Any was change in Python 3.11 so it can be used as a base class
+# - Considered for Python 3.12
+#   - PEP 695 infer_variance parameter for TypeVar
+#   - PEP 696 default parameter for TypeVar, TypeVarTuple, and ParamSpec
 CUSTOM_TYPING_EXT_SYMBOLS = {
     (3, 9): {'get_type_hints'},
     (3, 10): {'get_origin', 'get_args'},
-    (3, 11): {'NamedTuple', 'TypedDict', 'final', 'overload'},
+    (3, 11): {'Any', 'NamedTuple', 'TypedDict', 'final', 'overload'},
+    (3, 12): {'ParamSpec', 'TypeVar', 'TypeVarTuple'},
 }
 
 
