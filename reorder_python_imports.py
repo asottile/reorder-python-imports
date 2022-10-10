@@ -421,7 +421,7 @@ REMOVALS[(3, 7)].add('from __future__ import generator_stop')
 # Using:
 #     flake8-typing-imports==1.13.0
 #     mypy-extensions==0.4.3
-#     typing-extensions==4.3.0
+#     typing-extensions==4.4.0
 REPLACES[(3, 6)].update((
     'typing_extensions=typing:AsyncIterable',
     'typing_extensions=typing:AsyncIterator',
@@ -459,7 +459,6 @@ REPLACES[(3, 9)].update((
 ))
 REPLACES[(3, 10)].update((
     'typing_extensions=typing:Concatenate',
-    'typing_extensions=typing:ParamSpec',
     'typing_extensions=typing:ParamSpecArgs',
     'typing_extensions=typing:ParamSpecKwargs',
     'typing_extensions=typing:TypeAlias',
