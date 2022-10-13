@@ -26,7 +26,17 @@ def in_tmpdir(tmpdir):
 
 
 @pytest.mark.parametrize(
-    's', ("''", '""', 'r"hi"', 'u"hello"', '"""hello\nworld"""', "'''\n'''"),
+    's',
+    (
+        "''",
+        '""',
+        'r"hi"',
+        'u"hello"',
+        '"""hello\nworld"""',
+        "'''\n'''",
+        "'''\\\n'''",
+        "'''\\\r\n'''",
+    ),
 )
 def test_tokenize_can_match_strings(s):
     tp, pat = TOKENIZE[-1]

@@ -19,12 +19,16 @@ def raw(s: str) -> str:
         return repr(s)
 
 
+def _escaped_newline(s: str) -> str:
+    return s.replace(r'\\.|', r'\\.|\\\n|')
+
+
 def main() -> int:
     # only want the prefixes that can be docstrings
     string_prefix = '[RrUu]?'
 
-    double_3 = f'"""{tokenize.Double3}'
-    single_3 = f"'''{tokenize.Single3}"
+    double_3 = f'"""{_escaped_newline(tokenize.Double3)}'
+    single_3 = f"'''{_escaped_newline(tokenize.Single3)}"
     double_1 = f'"{tokenize.Double}'
     single_1 = f"'{tokenize.Single}"
 
