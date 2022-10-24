@@ -419,7 +419,7 @@ REMOVALS[(3, 7)].add('from __future__ import generator_stop')
 
 # GENERATED VIA generate-typing-rewrite-info
 # Using:
-#     flake8-typing-imports==1.13.0
+#     flake8-typing-imports==1.14.0
 #     mypy-extensions==0.4.3
 #     typing-extensions==4.4.0
 REPLACES[(3, 6)].update((
@@ -466,6 +466,25 @@ REPLACES[(3, 10)].update((
     'typing_extensions=typing:get_args',
     'typing_extensions=typing:get_origin',
     'typing_extensions=typing:is_typeddict',
+))
+REPLACES[(3, 11)].update((
+    'typing_extensions=typing:Any',
+    'typing_extensions=typing:LiteralString',
+    'typing_extensions=typing:NamedTuple',
+    'typing_extensions=typing:Never',
+    'typing_extensions=typing:NotRequired',
+    'typing_extensions=typing:Required',
+    'typing_extensions=typing:Self',
+    'typing_extensions=typing:TypedDict',
+    'typing_extensions=typing:Unpack',
+    'typing_extensions=typing:assert_never',
+    'typing_extensions=typing:assert_type',
+    'typing_extensions=typing:clear_overloads',
+    'typing_extensions=typing:dataclass_transform',
+    'typing_extensions=typing:final',
+    'typing_extensions=typing:get_overloads',
+    'typing_extensions=typing:overload',
+    'typing_extensions=typing:reveal_type',
 ))
 # END GENERATED
 
@@ -536,7 +555,7 @@ REMOVALS[(3,)].update((
 # END GENERATED
 
 # GENERATED VIA generate-six-info
-# Using six==1.15.0
+# Using six==1.16.0
 REMOVALS[(3,)].update((
     'from six import callable',
     'from six import next',

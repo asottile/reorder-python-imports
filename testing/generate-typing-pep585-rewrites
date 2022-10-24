@@ -7,8 +7,6 @@ import typing.re
 
 
 def main() -> int:
-    assert sys.version_info[:2] == (3, 9), sys.version_info
-
     renames = [
         f'typing={value.__origin__.__module__}:{name}'
         for name, value in vars(typing).items()
