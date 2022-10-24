@@ -16,7 +16,9 @@ def main() -> int:
         if k == 'barry_as_FLUFL' or not hasattr(v, 'mandatory'):
             continue
 
-        if v.mandatory[1] == 0:
+        if v.mandatory is None:
+            continue
+        elif v.mandatory[1] == 0:
             version = (v.mandatory[0],)
         else:
             version = v.mandatory[:2]
