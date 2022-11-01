@@ -10,7 +10,7 @@ repos:
     -   id: name-tests-test
     -   id: requirements-txt-fixer
 -   repo: https://github.com/asottile/setup-cfg-fmt
-    rev: v2.1.0
+    rev: v2.2.0
     hooks:
     -   id: setup-cfg-fmt
 -   repo: https://github.com/asottile/reorder_python_imports
@@ -24,12 +24,12 @@ repos:
     -   id: add-trailing-comma
         args: [--py36-plus]
 -   repo: https://github.com/asottile/pyupgrade
-    rev: v3.1.0
+    rev: v3.2.0
     hooks:
     -   id: pyupgrade
         args: [--py37-plus]
 -   repo: https://github.com/pre-commit/mirrors-autopep8
-    rev: v1.7.0
+    rev: v2.0.0
     hooks:
     -   id: autopep8
 -   repo: https://github.com/PyCQA/flake8
