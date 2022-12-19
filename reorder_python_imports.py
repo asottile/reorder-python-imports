@@ -66,7 +66,6 @@ def _tokenize(s: str) -> Generator[tuple[Tok, str], None, None]:
             if match is not None:
                 if 'noreorder' in match['comment']:
                     yield (Tok.ERROR, s[pos:])
-                    return
                 else:
                     yield (tp, match[0])
                 pos = match.end()
