@@ -1,0 +1,13 @@
+name: main
+
+on:
+  push:
+    branches: [main, test-me-*]
+    tags:
+  pull_request:
+
+jobs:
+  main:
+    uses: asottile/workflows/.github/workflows/tox.yml@v1.0.0
+    with:
+      env: '["py37", "py38"]'
