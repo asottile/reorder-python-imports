@@ -1,7 +1,7 @@
-[![build status](https://github.com/asottile/reorder_python_imports/actions/workflows/main.yml/badge.svg)](https://github.com/asottile/reorder_python_imports/actions/workflows/main.yml)
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/asottile/reorder_python_imports/main.svg)](https://results.pre-commit.ci/latest/github/asottile/reorder_python_imports/main)
+[![build status](https://github.com/asottile/reorder-python-imports/actions/workflows/main.yml/badge.svg)](https://github.com/asottile/reorder-python-imports/actions/workflows/main.yml)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/asottile/reorder-python-imports/main.svg)](https://results.pre-commit.ci/latest/github/asottile/reorder-python-imports/main)
 
-reorder_python_imports
+reorder-python-imports
 ======================
 
 Tool for automatically reordering python imports.  Similar to `isort` but
@@ -43,7 +43,7 @@ See [pre-commit](https://github.com/pre-commit/pre-commit) for instructions
 Sample `.pre-commit-config.yaml`
 
 ```yaml
--   repo: https://github.com/asottile/reorder_python_imports
+-   repo: https://github.com/asottile/reorder-python-imports
     rev: v3.9.0
     hooks:
     -   id: reorder-python-imports
