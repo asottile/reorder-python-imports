@@ -420,8 +420,8 @@ REMOVALS[(3, 7)].add('from __future__ import generator_stop')
 # GENERATED VIA generate-typing-rewrite-info
 # Using:
 #     flake8-typing-imports==1.14.0
-#     mypy-extensions==0.4.3
-#     typing-extensions==4.4.0
+#     mypy-extensions==1.0.0
+#     typing-extensions==4.6.3
 REPLACES[(3, 6)].update((
     'typing_extensions=typing:AsyncIterable',
     'typing_extensions=typing:AsyncIterator',
@@ -430,7 +430,6 @@ REPLACES[(3, 6)].update((
     'typing_extensions=typing:ContextManager',
     'typing_extensions=typing:Coroutine',
     'typing_extensions=typing:DefaultDict',
-    'typing_extensions=typing:NewType',
     'typing_extensions=typing:TYPE_CHECKING',
     'typing_extensions=typing:Text',
     'typing_extensions=typing:Type',
@@ -447,9 +446,7 @@ REPLACES[(3, 7)].update((
 REPLACES[(3, 8)].update((
     'mypy_extensions=typing:TypedDict',
     'typing_extensions=typing:Final',
-    'typing_extensions=typing:Literal',
     'typing_extensions=typing:OrderedDict',
-    'typing_extensions=typing:Protocol',
     'typing_extensions=typing:SupportsIndex',
     'typing_extensions=typing:runtime_checkable',
 ))
@@ -459,6 +456,8 @@ REPLACES[(3, 9)].update((
 ))
 REPLACES[(3, 10)].update((
     'typing_extensions=typing:Concatenate',
+    'typing_extensions=typing:Literal',
+    'typing_extensions=typing:NewType',
     'typing_extensions=typing:ParamSpecArgs',
     'typing_extensions=typing:ParamSpecKwargs',
     'typing_extensions=typing:TypeAlias',
@@ -470,17 +469,13 @@ REPLACES[(3, 10)].update((
 REPLACES[(3, 11)].update((
     'typing_extensions=typing:Any',
     'typing_extensions=typing:LiteralString',
-    'typing_extensions=typing:NamedTuple',
     'typing_extensions=typing:Never',
     'typing_extensions=typing:NotRequired',
     'typing_extensions=typing:Required',
     'typing_extensions=typing:Self',
-    'typing_extensions=typing:TypedDict',
-    'typing_extensions=typing:Unpack',
     'typing_extensions=typing:assert_never',
     'typing_extensions=typing:assert_type',
     'typing_extensions=typing:clear_overloads',
-    'typing_extensions=typing:dataclass_transform',
     'typing_extensions=typing:final',
     'typing_extensions=typing:get_overloads',
     'typing_extensions=typing:overload',
