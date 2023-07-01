@@ -4,15 +4,11 @@ from __future__ import annotations
 import collections
 import os
 import sys
+from importlib.metadata import version
 
 import flake8_typing_imports
 import mypy_extensions
 import typing_extensions
-
-if sys.version_info >= (3, 8):
-    from importlib.metadata import version
-else:
-    from importlib_metadata import version
 
 
 # --- typing_extensions notes ---
