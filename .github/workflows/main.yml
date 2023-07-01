@@ -8,6 +8,6 @@ on:
 
 jobs:
   main:
-    uses: asottile/workflows/.github/workflows/tox.yml@v1.0.0
+    uses: asottile/workflows/.github/workflows/tox.yml@v1.5.0
     with:
-      env: '["py37", "py38"]'
+      env: '["py38", "py39"]'
