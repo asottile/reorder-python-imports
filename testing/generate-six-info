@@ -37,6 +37,9 @@ def main() -> int:
         for submod in ('error', 'parse', 'request', 'response', 'robotparser')
     ]
 
+    # six only exports this on windows
+    renames.append('six.moves.winreg=_winreg')
+
     # not in six.moves for some reason
     renames.extend((
         'six=functools:wraps',
