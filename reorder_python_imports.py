@@ -419,20 +419,56 @@ REMOVALS[(3, 7)].add('from __future__ import generator_stop')
 
 # GENERATED VIA generate-typing-rewrite-info
 # Using:
-#     flake8-typing-imports==1.14.0
+#     flake8-typing-imports==1.15.0
 #     mypy-extensions==1.0.0
-#     typing-extensions==4.6.3
+#     typing-extensions==4.8.0
 REPLACES[(3, 6)].update((
+    'typing_extensions=typing:AbstractSet',
+    'typing_extensions=typing:AnyStr',
     'typing_extensions=typing:AsyncIterable',
     'typing_extensions=typing:AsyncIterator',
     'typing_extensions=typing:Awaitable',
+    'typing_extensions=typing:BinaryIO',
+    'typing_extensions=typing:Callable',
     'typing_extensions=typing:ClassVar',
+    'typing_extensions=typing:Collection',
+    'typing_extensions=typing:Container',
     'typing_extensions=typing:ContextManager',
     'typing_extensions=typing:Coroutine',
     'typing_extensions=typing:DefaultDict',
+    'typing_extensions=typing:Dict',
+    'typing_extensions=typing:FrozenSet',
+    'typing_extensions=typing:Generator',
+    'typing_extensions=typing:Generic',
+    'typing_extensions=typing:Hashable',
+    'typing_extensions=typing:IO',
+    'typing_extensions=typing:ItemsView',
+    'typing_extensions=typing:Iterable',
+    'typing_extensions=typing:Iterator',
+    'typing_extensions=typing:KeysView',
+    'typing_extensions=typing:List',
+    'typing_extensions=typing:Mapping',
+    'typing_extensions=typing:MappingView',
+    'typing_extensions=typing:Match',
+    'typing_extensions=typing:MutableMapping',
+    'typing_extensions=typing:MutableSequence',
+    'typing_extensions=typing:MutableSet',
+    'typing_extensions=typing:Optional',
+    'typing_extensions=typing:Pattern',
+    'typing_extensions=typing:Reversible',
+    'typing_extensions=typing:Sequence',
+    'typing_extensions=typing:Set',
+    'typing_extensions=typing:Sized',
     'typing_extensions=typing:TYPE_CHECKING',
     'typing_extensions=typing:Text',
+    'typing_extensions=typing:TextIO',
+    'typing_extensions=typing:Tuple',
     'typing_extensions=typing:Type',
+    'typing_extensions=typing:Union',
+    'typing_extensions=typing:ValuesView',
+    'typing_extensions=typing:cast',
+    'typing_extensions=typing:no_type_check',
+    'typing_extensions=typing:no_type_check_decorator',
 ))
 REPLACES[(3, 7)].update((
     'mypy_extensions=typing:NoReturn',
@@ -441,6 +477,7 @@ REPLACES[(3, 7)].update((
     'typing_extensions=typing:ChainMap',
     'typing_extensions=typing:Counter',
     'typing_extensions=typing:Deque',
+    'typing_extensions=typing:ForwardRef',
     'typing_extensions=typing:NoReturn',
 ))
 REPLACES[(3, 8)].update((
@@ -480,6 +517,21 @@ REPLACES[(3, 11)].update((
     'typing_extensions=typing:get_overloads',
     'typing_extensions=typing:overload',
     'typing_extensions=typing:reveal_type',
+))
+REPLACES[(3, 12)].update((
+    'typing_extensions=typing:NamedTuple',
+    'typing_extensions=typing:Protocol',
+    'typing_extensions=typing:SupportsAbs',
+    'typing_extensions=typing:SupportsBytes',
+    'typing_extensions=typing:SupportsComplex',
+    'typing_extensions=typing:SupportsFloat',
+    'typing_extensions=typing:SupportsInt',
+    'typing_extensions=typing:SupportsRound',
+    'typing_extensions=typing:TypeAliasType',
+    'typing_extensions=typing:TypedDict',
+    'typing_extensions=typing:Unpack',
+    'typing_extensions=typing:dataclass_transform',
+    'typing_extensions=typing:override',
 ))
 # END GENERATED
 
