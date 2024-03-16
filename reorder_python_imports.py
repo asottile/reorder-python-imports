@@ -99,7 +99,7 @@ def partition_source(src: str) -> tuple[str, list[str], str, str]:
             elif s.isspace():
                 tp = CodeType.NON_CODE
             else:
-               tp = CodeType.CODE
+                tp = CodeType.CODE
 
             chunks.append((tp, s))
         elif pre_import and token_type is Tok.STRING:
