@@ -94,10 +94,10 @@ def partition_source(src: str) -> tuple[str, list[str], str, str]:
             pre_import = False
             chunks.append((CodeType.IMPORT, s))
         elif token_type is Tok.NEWLINE:
-            if s.isspace():
-                tp = CodeType.NON_CODE
-            elif pre_import:
+            if pre_import:
                 tp = CodeType.PRE_IMPORT_CODE
+            elif s.isspace():
+                tp = CodeType.NON_CODE
             else:
                 tp = CodeType.CODE
 

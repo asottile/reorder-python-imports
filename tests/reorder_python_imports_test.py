@@ -47,7 +47,7 @@ def test_tokenize_can_match_strings(s):
 @pytest.mark.parametrize(
     's',
     (
-        pytest.param('', id='trivial'),
+        pytest.param('\n', id='trivial'),
         pytest.param('#!/usr/bin/env python\n', id='shebang'),
         pytest.param('# -*- coding: UTF-8 -*-\n', id='source encoding'),
         pytest.param('  # coding: UTF-8\n', id='source encoding indented'),
@@ -190,7 +190,7 @@ def test_partition_source_imports_only(s, expected):
     assert nl == '\n'
 
 
-def test_partition_source_before_removes_newlines():
+def test_partition_source_before_leaves_newlines():
     before, imports, after, nl = partition_source(
         '# comment here\n'
         '\n'
@@ -198,6 +198,7 @@ def test_partition_source_before_removes_newlines():
     )
     assert before == (
         '# comment here\n'
+        '\n'
         '# another comment here\n'
     )
     assert imports == []

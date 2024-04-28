@@ -1,0 +1,73 @@
+[build-system]
+requires = [
+    "setuptools>=61.2",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rpi"
+version = "3.12.0"
+description = "Tool for reordering python imports"
+authors = [
+    { name = "Anthony Sottile", email = "asottile@umich.edu" },
+    { name = "Wim Jeantine-Glenn", email = "wim.glenn@gmail.com" }
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "classify-imports>=4.1",
+]
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[project.license]
+text = "MIT"
+
+[project.urls]
+Upstream = "https://github.com/asottile/reorder-python-imports"
+Homepage = "https://github.com/wimglenn/rpi"
+
+[project.scripts]
+reorder-python-imports = "reorder_python_imports:main"
+rpi = "reorder_python_imports:main"
+
+[tool.setuptools]
+py-modules = [
+    "reorder_python_imports",
+]
+license-files = [
+    "LICENSE",
+]
+include-package-data = false
+
+[tool.distutils.bdist_wheel]
+universal = true
+
+[tool.coverage.run]
+plugins = [
+    "covdefaults",
+]
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = [
+    "testing.*",
+]
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",
+]
+disallow_untyped_defs = false

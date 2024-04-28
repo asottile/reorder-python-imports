@@ -1,13 +1,33 @@
-name: main
+name: tests
 
 on:
   push:
-    branches: [main, test-me-*]
-    tags: '*'
+    branches: ["main"]
   pull_request:
+    branches: ["main"]
+  workflow_dispatch:
 
 jobs:
-  main:
-    uses: asottile/workflows/.github/workflows/tox.yml@v1.5.0
-    with:
-      env: '["py38", "py39"]'
+  tests:
+    name: "Python ${{ matrix.python-version }} on ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: "actions/checkout@v4"
+      - uses: "actions/setup-python@v5"
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - name: "Install"
+        run: "pip install --editable . pytest pytest-cov"
+      - name: "Run tests for ${{ matrix.python-version }} on ${{ matrix.os }}"
+        run: pytest --cov=reorder_python_imports
+      - name: Upload coverage to Codecov
+        uses: "codecov/codecov-action@v3"
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
