@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: "${{ matrix.python-version }}"
       - name: "Install"
-        run: "pip install --editable . pytest pytest-cov"
+        run: "pip install --editable . pytest pytest-cov covdefaults"
       - name: "Run tests for ${{ matrix.python-version }} on ${{ matrix.os }}"
         run: pytest --cov=reorder_python_imports
       - name: Upload coverage to Codecov

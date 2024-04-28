@@ -5,7 +5,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "rpi"
+name = "reorder-python-imports-black"
 version = "3.12.0"
 description = "Tool for reordering python imports"
 authors = [
@@ -29,7 +29,7 @@ text = "MIT"
 
 [project.urls]
 Upstream = "https://github.com/asottile/reorder-python-imports"
-Homepage = "https://github.com/wimglenn/rpi"
+Homepage = "https://github.com/wimglenn/reorder-python-imports-black"
 
 [project.scripts]
 reorder-python-imports = "reorder_python_imports:main"

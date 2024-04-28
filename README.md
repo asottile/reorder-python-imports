@@ -1,10 +1,10 @@
-rpi
-===
+reorder-python-imports-black
+============================
 
 Fork of [reorder-python-imports](https://github.com/asottile/reorder-python-imports) for interoperability with [black](https://github.com/psf/black).
 
 ```
-pip install rpi
+pip install reorder-python-imports-black
 ```
 
 Black wants a newline between the module docstring and the imports, upstream `reorder-python-imports` does not.
