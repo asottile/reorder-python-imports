@@ -421,7 +421,7 @@ REMOVALS[(3, 7)].add('from __future__ import generator_stop')
 # Using:
 #     flake8-typing-imports==1.15.0
 #     mypy-extensions==1.0.0
-#     typing-extensions==4.8.0
+#     typing-extensions==4.12.1
 REPLACES[(3, 6)].update((
     'typing_extensions=typing:AbstractSet',
     'typing_extensions=typing:AnyStr',
@@ -433,12 +433,10 @@ REPLACES[(3, 6)].update((
     'typing_extensions=typing:ClassVar',
     'typing_extensions=typing:Collection',
     'typing_extensions=typing:Container',
-    'typing_extensions=typing:ContextManager',
     'typing_extensions=typing:Coroutine',
     'typing_extensions=typing:DefaultDict',
     'typing_extensions=typing:Dict',
     'typing_extensions=typing:FrozenSet',
-    'typing_extensions=typing:Generator',
     'typing_extensions=typing:Generic',
     'typing_extensions=typing:Hashable',
     'typing_extensions=typing:IO',
@@ -472,8 +470,6 @@ REPLACES[(3, 6)].update((
 ))
 REPLACES[(3, 7)].update((
     'mypy_extensions=typing:NoReturn',
-    'typing_extensions=typing:AsyncContextManager',
-    'typing_extensions=typing:AsyncGenerator',
     'typing_extensions=typing:ChainMap',
     'typing_extensions=typing:Counter',
     'typing_extensions=typing:Deque',
@@ -484,8 +480,6 @@ REPLACES[(3, 8)].update((
     'mypy_extensions=typing:TypedDict',
     'typing_extensions=typing:Final',
     'typing_extensions=typing:OrderedDict',
-    'typing_extensions=typing:SupportsIndex',
-    'typing_extensions=typing:runtime_checkable',
 ))
 REPLACES[(3, 9)].update((
     'typing_extensions=typing:Annotated',
@@ -520,15 +514,14 @@ REPLACES[(3, 11)].update((
 ))
 REPLACES[(3, 12)].update((
     'typing_extensions=typing:NamedTuple',
-    'typing_extensions=typing:Protocol',
     'typing_extensions=typing:SupportsAbs',
     'typing_extensions=typing:SupportsBytes',
     'typing_extensions=typing:SupportsComplex',
     'typing_extensions=typing:SupportsFloat',
+    'typing_extensions=typing:SupportsIndex',
     'typing_extensions=typing:SupportsInt',
     'typing_extensions=typing:SupportsRound',
     'typing_extensions=typing:TypeAliasType',
-    'typing_extensions=typing:TypedDict',
     'typing_extensions=typing:Unpack',
     'typing_extensions=typing:dataclass_transform',
     'typing_extensions=typing:override',

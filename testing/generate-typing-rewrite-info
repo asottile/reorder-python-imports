@@ -27,25 +27,35 @@ import typing_extensions
 # - Any was change in Python 3.11 so it can be used as a base class
 # - From 3.11, NamedTuple and TypedDict can inherit from Generic;
 #   from 3.12 onwards, the __orig_bases__ attribute
-#   is properly set on NamedTuple and TypedDict classes
+#   is properly set on NamedTuple and TypedDict classes.
+#   From 3.13 onwards, TypedDict fields can be marked as `ReadOnly`.
 # - The frozen_default parameter was added to dataclass_transform in py312
 # - isinstance() checks are 20x faster or more for runtime-checkable protocols
-#   on py312; typing_extensions backports the performance improvement
+#   on py312; typing_extensions backports the performance improvement.
+#   It also backports several bugfixes from early py312 patch releases.
 # - The repr of Unpack was changed in py312 as part of PEP 692;
 #   typing_extensions backports this
 # - Python 3.12 adds the PEP 695 infer_variance parameter for TypeVar.
-#   The PEP 696 default parameter for TypeVar, TypeVarTuple, and ParamSpec
-#   is under consideration for Python 3.13.
+# - The PEP 696 default parameter for TypeVar, TypeVarTuple, and ParamSpec
+#   has been added in Python 3.13.
+# - (Async)Generator now has a default value for all type parameters except
+#   the first one on py313+, and (Async)ContextManager now has an optional
+#   second parameter with a default value; typing_extensions backports these
+#   changes.
 CUSTOM_TYPING_EXT_SYMBOLS = {
     (3, 9): {'get_type_hints'},
     (3, 10): {'get_origin', 'get_args', 'Literal', 'NewType'},
     (3, 11): {'Any', 'final', 'overload'},
     (3, 12): {
-        'Protocol', 'SupportsInt', 'SupportsFloat', 'SupportsComplex',
+        'SupportsInt', 'SupportsFloat', 'SupportsComplex',
         'SupportsBytes', 'SupportsAbs', 'SupportsRound', 'NamedTuple',
-        'TypedDict', 'Unpack', 'dataclass_transform',
+        'Unpack', 'dataclass_transform', 'SupportsIndex',
     },
-    (3, 13): {'TypeVar', 'TypeVarTuple', 'ParamSpec'},
+    (3, 13): {
+        'AsyncContextManager', 'ContextManager', 'AsyncGenerator', 'Generator',
+        'TypeVar', 'TypeVarTuple', 'ParamSpec', 'TypedDict', 'Protocol',
+        'runtime_checkable',
+    },
 }
 
 
