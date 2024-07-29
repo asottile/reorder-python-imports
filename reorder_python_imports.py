@@ -58,7 +58,7 @@ TOKENIZE: tuple[tuple[Tok, re.Pattern[str]], ...] = (
 )
 
 
-def _tokenize(s: str) -> Generator[tuple[Tok, str], None, None]:
+def _tokenize(s: str) -> Generator[tuple[Tok, str]]:
     pos = 0
     while True:
         for tp, reg in TOKENIZE:
@@ -268,7 +268,7 @@ def replace_imports(
     return ret
 
 
-def _module_to_base_modules(s: str) -> Generator[str, None, None]:
+def _module_to_base_modules(s: str) -> Generator[str]:
     """return all module names that would be imported due to this
     import-import
     """
