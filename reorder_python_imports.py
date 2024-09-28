@@ -421,7 +421,7 @@ REMOVALS[(3, 7)].add('from __future__ import generator_stop')
 # Using:
 #     flake8-typing-imports==1.15.0
 #     mypy-extensions==1.0.0
-#     typing-extensions==4.12.1
+#     typing-extensions==4.12.2
 REPLACES[(3, 6)].update((
     'typing_extensions=typing:AbstractSet',
     'typing_extensions=typing:AnyStr',
@@ -525,6 +525,18 @@ REPLACES[(3, 12)].update((
     'typing_extensions=typing:Unpack',
     'typing_extensions=typing:dataclass_transform',
     'typing_extensions=typing:override',
+))
+REPLACES[(3, 13)].update((
+    'typing_extensions=typing:AsyncContextManager',
+    'typing_extensions=typing:AsyncGenerator',
+    'typing_extensions=typing:ContextManager',
+    'typing_extensions=typing:Generator',
+    'typing_extensions=typing:ParamSpec',
+    'typing_extensions=typing:Protocol',
+    'typing_extensions=typing:TypeVar',
+    'typing_extensions=typing:TypeVarTuple',
+    'typing_extensions=typing:TypedDict',
+    'typing_extensions=typing:runtime_checkable',
 ))
 # END GENERATED
 
