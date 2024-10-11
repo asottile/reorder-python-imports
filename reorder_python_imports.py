@@ -9,9 +9,9 @@ import itertools
 import os
 import re
 import sys
-from typing import Generator
+from collections.abc import Generator
+from collections.abc import Sequence
 from typing import NamedTuple
-from typing import Sequence
 
 from classify_imports import Import
 from classify_imports import import_obj_from_str
