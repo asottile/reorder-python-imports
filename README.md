@@ -129,6 +129,15 @@ except ImportError:
     pass
 ```
 
+```python
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    # all these imports are after non-whitspace non-comment lines
+    # and will be ignored (i.e. they will remain out of order)
+    from collections.abc import Sequence
+    from collections.abc import Callable
+```
 
 ```python
 import sys
