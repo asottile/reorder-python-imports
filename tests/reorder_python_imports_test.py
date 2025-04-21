@@ -189,17 +189,27 @@ def test_partition_source_imports_only(s, expected):
     assert before == after == ''
     assert nl == '\n'
 
+@pytest.mark.parametrize(
+    ('retain', 'before_lines'),
+    (
+        pytest.param(
 
-def test_partition_source_before_removes_newlines():
-    before, imports, after, nl = partition_source(
-        '# comment here\n'
+            False, '# comment here\n# another comment here\n',
+            id='default',
+        ),
+        pytest.param(
+            True,
+            '# comment here\n\n# another comment here\n',
+            id='retain',
+        ),
+    )
+)
+def test_partition_source_before_removes_newlines(retain, before_lines):
+    src = ('# comment here\n'
         '\n'
-        '# another comment here\n',
-    )
-    assert before == (
-        '# comment here\n'
-        '# another comment here\n'
-    )
+        '# another comment here\n')
+    before, imports, after, nl = partition_source(src, retain)
+    assert before == before_lines
     assert imports == []
     assert after == ''
     assert nl == '\n'

@@ -76,7 +76,10 @@ def _tokenize(s: str) -> Generator[tuple[Tok, str]]:
             return
 
 
-def partition_source(src: str) -> tuple[str, list[str], str, str]:
+def partition_source(
+        src: str,
+        retain_pre_import: bool = False,
+) -> tuple[str, list[str], str, str]:
     sio = io.StringIO(src, newline=None)
     src = sio.read().rstrip() + '\n'
 
@@ -94,7 +97,7 @@ def partition_source(src: str) -> tuple[str, list[str], str, str]:
             pre_import = False
             chunks.append((CodeType.IMPORT, s))
         elif token_type is Tok.NEWLINE:
-            if s.isspace():
+            if s.isspace() and (not retain_pre_import or not pre_import):
                 tp = CodeType.NON_CODE
             elif pre_import:
                 tp = CodeType.PRE_IMPORT_CODE
@@ -342,12 +345,13 @@ def fix_file_contents(
         to_remove: set[tuple[str, ...]],
         to_replace: Replacements,
         settings: Settings = Settings(),
+        retain_pre_import: bool = False,
 ) -> str:
     if not contents or contents.isspace():
         return ''
 
     # internally use `'\n` as the newline and normalize at the very end
-    before, imports, after, nl = partition_source(contents)
+    before, imports, after, nl = partition_source(contents, retain_pre_import)
 
     parsed = parse_imports(imports, to_add=to_add)
     parsed = replace_imports(parsed, to_replace=to_replace)
@@ -385,6 +389,7 @@ def _fix_file(
         to_remove=to_remove,
         to_replace=to_replace,
         settings=settings,
+        retain_pre_import=args.retain_pre_import,
     )
     if filename == '-':
         print(new_contents, end='')
@@ -835,6 +840,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         help=(
             'Colon separated directories that are considered top-level '
             'application directories.  Defaults to `%(default)s`'
+        ),
+    )
+    parser.add_argument(
+        '--retain-pre-import', default=False,
+        help=(
+            'Setting that specifies to retain pre-import newlines in unchanged'
+            ' format. Useful when black or other external formatter is in use.'
+            'Bool true or false.'
         ),
     )
     parser.add_argument(
