@@ -65,7 +65,7 @@ def main() -> int:
     typing_extensions_version = version('typing_extensions')
 
     mypy_extensions_all = frozenset(
-        a for a in dir(mypy_extensions) if a != 'Any'
+        a for a in dir(mypy_extensions) if a not in {'Any', 'Dict'}
     )
     typing_extensions_all = frozenset(typing_extensions.__all__) - {
         sym for v in CUSTOM_TYPING_EXT_SYMBOLS.values() for sym in v
@@ -111,6 +111,12 @@ def main() -> int:
         }
     for v, attrs in CUSTOM_TYPING_EXT_SYMBOLS.items():
         replaces[v] |= {f'typing_extensions=typing:{s}' for s in attrs}
+
+    # NoReturn was removed from mypy_extensions
+    replaces[(3, 7)].add('mypy_extensions=typing:NoReturn')
+
+    # @deprecated was added to warnings in Python 3.13.
+    replaces[(3, 13)].add('typing_extensions=warnings:deprecated')
 
     print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
     print('# Using:')

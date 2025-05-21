@@ -420,8 +420,8 @@ REMOVALS[(3, 7)].add('from __future__ import generator_stop')
 # GENERATED VIA generate-typing-rewrite-info
 # Using:
 #     flake8-typing-imports==1.16.0
-#     mypy-extensions==1.0.0
-#     typing-extensions==4.12.2
+#     mypy-extensions==1.1.0
+#     typing-extensions==4.13.2
 REPLACES[(3, 6)].update((
     'typing_extensions=typing:AbstractSet',
     'typing_extensions=typing:AnyStr',
@@ -542,6 +542,7 @@ REPLACES[(3, 13)].update((
     'typing_extensions=typing:get_protocol_members',
     'typing_extensions=typing:is_protocol',
     'typing_extensions=typing:runtime_checkable',
+    'typing_extensions=warnings:deprecated',
 ))
 # END GENERATED
 
