@@ -415,6 +415,7 @@ REMOVALS[(3,)].update((
     'from __future__ import unicode_literals',
 ))
 REMOVALS[(3, 7)].add('from __future__ import generator_stop')
+REMOVALS[(3, 14)].add('from __future__ import annotations')
 # END GENERATED
 
 # GENERATED VIA generate-typing-rewrite-info
