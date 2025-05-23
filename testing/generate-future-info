@@ -10,12 +10,14 @@ import sys
 def main() -> int:
     assert sys.version_info >= (3, 10), 'need python3.10'
 
+    by_version: dict[tuple[int, ...], list[str]]
     by_version = collections.defaultdict(list)
 
     for k, v in vars(__future__).items():
         if k == 'barry_as_FLUFL' or not hasattr(v, 'mandatory'):
             continue
 
+        version: tuple[int, ...]
         if v.mandatory is None:
             continue
         elif v.mandatory[1] == 0:
@@ -24,6 +26,9 @@ def main() -> int:
             version = v.mandatory[:2]
 
         by_version[version].append(k)
+
+    # no longer needed!
+    by_version[(3, 14)].append('annotations')
 
     print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
     for version, names in sorted(by_version.items()):
