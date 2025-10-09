@@ -10,4 +10,4 @@ jobs:
   main:
     uses: asottile/workflows/.github/workflows/tox.yml@v1.8.1
     with:
-      env: '["py39", "py310"]'
+      env: '["py310", "py311"]'
