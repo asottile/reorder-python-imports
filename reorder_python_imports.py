@@ -420,9 +420,9 @@ REMOVALS[(3, 14)].add('from __future__ import annotations')
 
 # GENERATED VIA generate-typing-rewrite-info
 # Using:
-#     flake8-typing-imports==1.16.0
+#     flake8-typing-imports==1.17.0
 #     mypy-extensions==1.1.0
-#     typing-extensions==4.13.2
+#     typing-extensions==4.15.0
 REPLACES[(3, 6)].update((
     'typing_extensions=typing:AbstractSet',
     'typing_extensions=typing:AnyStr',
@@ -544,6 +544,9 @@ REPLACES[(3, 13)].update((
     'typing_extensions=typing:is_protocol',
     'typing_extensions=typing:runtime_checkable',
     'typing_extensions=warnings:deprecated',
+))
+REPLACES[(3, 14)].update((
+    'typing_extensions=typing:evaluate_forward_ref',
 ))
 # END GENERATED
 
