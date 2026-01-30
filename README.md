@@ -108,7 +108,7 @@ import sys
 becomes
 
 ```python
-import os.path
+import os
 import sys
 ```
 
