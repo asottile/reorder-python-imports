@@ -3,7 +3,8 @@
     description: This hook reorders imports in python files.
     entry: reorder-python-imports
     language: python
-    types: [python]
+    types_or: [python, pyi]
     # for backward compatibility
     files: ''
-    minimum_pre_commit_version: 0.15.0
+    types: []
+    minimum_pre_commit_version: 2.9.2
