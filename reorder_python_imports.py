@@ -499,6 +499,8 @@ REPLACES[(3, 10)].update((
     'typing_extensions=typing:is_typeddict',
 ))
 REPLACES[(3, 11)].update((
+    'async_timeout=asyncio:timeout',
+    'async_timeout=asyncio:timeout_at',
     'typing_extensions=typing:Any',
     'typing_extensions=typing:LiteralString',
     'typing_extensions=typing:Never',

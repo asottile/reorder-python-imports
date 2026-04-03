@@ -294,6 +294,16 @@ With `--py36-plus` and higher, `reorder-python-imports` will also rewrite
 +from typing import TypedDict
 ```
 
+## Rewriting `async_timeout` imports
+
+With `--py311-plus` and higher, `reorder-python-imports` will also rewrite
+`async_timeout` imports which moved to `asyncio`.
+
+```diff
+-from async_timeout import timeout
++from asyncio import timeout
+```
+
 ## Rewriting pep 585 typing imports
 
 With `--py39-plus` and higher, `reorder-python-imports` will replace imports
