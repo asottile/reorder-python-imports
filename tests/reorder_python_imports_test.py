@@ -205,6 +205,20 @@ def test_partition_source_before_removes_newlines():
     assert nl == '\n'
 
 
+def test_partition_source_preserves_whitespace_between_pre_import_and_import():
+    # keep blank lines between a top-level docstring and the first import to
+    # match black's formatting behaviour
+    before, imports, after, nl = partition_source(
+        '"""doc"""\n'
+        '\n'
+        'import os\n',
+    )
+    assert before == '"""doc"""\n\n'
+    assert imports == ['import os\n']
+    assert after == ''
+    assert nl == '\n'
+
+
 def test_partition_source_before_and_code_only():
     before, imports, after, nl = partition_source(
         '# before\n'

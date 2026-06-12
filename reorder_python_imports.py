@@ -107,9 +107,16 @@ def partition_source(src: str) -> tuple[str, list[str], str, str]:
         else:
             chunks.append((CodeType.CODE, s))
 
+    last_pre_import_idx = -1
+    first_import_idx = None
     last_idx = 0
     for i, (tp, _) in enumerate(chunks):
-        if tp in (CodeType.PRE_IMPORT_CODE, CodeType.IMPORT):
+        if tp is CodeType.PRE_IMPORT_CODE:
+            last_pre_import_idx = i
+            last_idx = i
+        elif tp is CodeType.IMPORT:
+            if first_import_idx is None:
+                first_import_idx = i
             last_idx = i
 
     pre = []
@@ -117,6 +124,13 @@ def partition_source(src: str) -> tuple[str, list[str], str, str]:
     code = []
     for i, (tp, src) in enumerate(chunks):
         if tp is CodeType.PRE_IMPORT_CODE:
+            pre.append(src)
+        elif (
+                tp is CodeType.NON_CODE and
+                first_import_idx is not None and
+                i > last_pre_import_idx and
+                i < first_import_idx
+        ):
             pre.append(src)
         elif tp is CodeType.IMPORT:
             imports.append(src)
