@@ -42,6 +42,9 @@ import typing_extensions
 #   the first one on py313+, and (Async)ContextManager now has an optional
 #   second parameter with a default value; typing_extensions backports these
 #   changes.
+# - Python 3.15 adds the PEP-728 which allows closed and extra_items to be
+#   passed to TypedDict. Importing TypedDict via typing_extensions is now a
+#   valid case before 3.15.
 CUSTOM_TYPING_EXT_SYMBOLS = {
     (3, 9): {'get_type_hints'},
     (3, 10): {'get_origin', 'get_args', 'Literal', 'NewType'},
@@ -53,9 +56,10 @@ CUSTOM_TYPING_EXT_SYMBOLS = {
     },
     (3, 13): {
         'AsyncContextManager', 'ContextManager', 'AsyncGenerator', 'Generator',
-        'TypeVar', 'TypeVarTuple', 'ParamSpec', 'TypedDict', 'Protocol',
+        'TypeVar', 'TypeVarTuple', 'ParamSpec', 'Protocol',
         'runtime_checkable',
     },
+    (3, 15): {'TypedDict'},
 }
 
 
