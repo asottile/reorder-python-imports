@@ -608,7 +608,7 @@ REPLACES[(3, 10)].add('typing=collections.abc:Callable')
 # END GENERATED
 
 # GENERATED VIA generate-python-future-info
-# Using future==0.18.2
+# Using future==1.0.0
 REMOVALS[(3,)].update((
     'from builtins import *',
     'from builtins import ascii',
@@ -638,7 +638,7 @@ REMOVALS[(3,)].update((
 # END GENERATED
 
 # GENERATED VIA generate-six-info
-# Using six==1.16.0
+# Using six==1.17.0
 REMOVALS[(3,)].update((
     'from six import callable',
     'from six import next',
@@ -718,7 +718,7 @@ REPLACES[(3,)].update((
 # END GENERATED
 
 # GENERATED VIA generate-mock-info
-# up until cpython 3.10.0
+# up until cpython 3.15.0
 REPLACES[(3,)].update((
     'mock.mock=unittest.mock:ANY',
     'mock.mock=unittest.mock:DEFAULT',
@@ -754,6 +754,10 @@ REPLACES[(3, 7)].update((
 REPLACES[(3, 8)].update((
     'mock.mock=unittest.mock:AsyncMock',
     'mock=unittest.mock:AsyncMock',
+))
+REPLACES[(3, 13)].update((
+    'mock.mock=unittest.mock:ThreadingMock',
+    'mock=unittest.mock:ThreadingMock',
 ))
 # END GENERATED
 

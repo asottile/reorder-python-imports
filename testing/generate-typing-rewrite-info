@@ -179,22 +179,28 @@ def main() -> int:
     # @deprecated was added to warnings in Python 3.13.
     replaces[(3, 13)].add('typing_extensions=warnings:deprecated')
 
-    print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
-    print('# Using:')
-    print(f'#     mypy-extensions=={mypy_extensions_version}')
-    print(f'#     typing-extensions=={typing_extensions_version}')
+    lines = []
+    lines.append('# Using:')
+    lines.append(f'#     mypy-extensions=={mypy_extensions_version}')
+    lines.append(f'#     typing-extensions=={typing_extensions_version}')
 
     for k, replaced in sorted(replaces.items()):
         if not v:
             continue
-        print(f'REPLACES[{k}].update((')
+        lines.append(f'REPLACES[{k}].update((')
         for replace in sorted(replaced):
-            print(f'    {replace!r},')
-        print('))')
+            lines.append(f'    {replace!r},')
+        lines.append('))')
 
-    print('# END GENERATED')
-
-    return 0
+    proc = subprocess.run(
+        (
+            sys.executable,
+            os.path.join(os.path.dirname(sys.argv[0]), '_replace'),
+            os.path.basename(sys.argv[0]),
+        ),
+        input='\n'.join(lines).encode(),
+    )
+    return proc.returncode
 
 
 if __name__ == '__main__':

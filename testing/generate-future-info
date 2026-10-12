@@ -4,6 +4,7 @@ from __future__ import annotations
 import __future__
 import collections
 import os.path
+import subprocess
 import sys
 
 
@@ -30,19 +31,26 @@ def main() -> int:
     # no longer needed!
     by_version[(3, 14)].append('annotations')
 
-    print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
+    lines = []
     for version, names in sorted(by_version.items()):
         if len(names) == 1:
             s = f'from __future__ import {names[0]}'
-            print(f'REMOVALS[{version}].add({s!r})')
+            lines.append(f'REMOVALS[{version}].add({s!r})')
         else:
-            print(f'REMOVALS[{version}].update((')
+            lines.append(f'REMOVALS[{version}].update((')
             for name in names:
-                print(f"    'from __future__ import {name}',")
-            print('))')
-    print('# END GENERATED')
+                lines.append(f"    'from __future__ import {name}',")
+            lines.append('))')
 
-    return 0
+    proc = subprocess.run(
+        (
+            sys.executable,
+            os.path.join(os.path.dirname(sys.argv[0]), '_replace'),
+            os.path.basename(sys.argv[0]),
+        ),
+        input='\n'.join(lines).encode(),
+    )
+    return proc.returncode
 
 
 if __name__ == '__main__':

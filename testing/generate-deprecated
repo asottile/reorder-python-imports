@@ -3,20 +3,27 @@ from __future__ import annotations
 
 import collections.abc
 import os.path
+import subprocess
 import sys
 
 
 def main() -> int:
-    print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
-    print('REPLACES[(3,)].update((')
+    lines = ['REPLACES[(3,)].update((']
     for k in sorted(collections.abc.__all__):
-        print(f"    'collections=collections.abc:{k}',")
-    print("    'pipes=shlex:quote',")
-    print("    'xml.etree.cElementTree=xml.etree.ElementTree',")
-    print('))')
-    print('# END GENERATED')
+        lines.append(f"    'collections=collections.abc:{k}',")
+    lines.append("    'pipes=shlex:quote',")
+    lines.append("    'xml.etree.cElementTree=xml.etree.ElementTree',")
+    lines.append('))')
 
-    return 0
+    proc = subprocess.run(
+        (
+            sys.executable,
+            os.path.join(os.path.dirname(sys.argv[0]), '_replace'),
+            os.path.basename(sys.argv[0]),
+        ),
+        input='\n'.join(lines).encode(),
+    )
+    return proc.returncode
 
 
 if __name__ == '__main__':

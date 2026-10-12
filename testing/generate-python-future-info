@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import builtins
 import os.path
+import subprocess
 import sys
 
 import future.builtins
@@ -13,16 +14,22 @@ def main() -> int:
         k for k, v in vars(future.builtins).items()
         if getattr(builtins, k, None) is v
     )
-    print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
-    print(f'# Using future=={future.__version__}')
-    print('REMOVALS[(3,)].update((')
-    print("    'from builtins import *',")
+    lines = [f'# Using future=={future.__version__}']
+    lines.append('REMOVALS[(3,)].update((')
+    lines.append("    'from builtins import *',")
     for name in names:
-        print(f"    'from builtins import {name}',")
-    print('))')
-    print('# END GENERATED')
+        lines.append(f"    'from builtins import {name}',")
+    lines.append('))')
 
-    return 0
+    proc = subprocess.run(
+        (
+            sys.executable,
+            os.path.join(os.path.dirname(sys.argv[0]), '_replace'),
+            os.path.basename(sys.argv[0]),
+        ),
+        input='\n'.join(lines).encode(),
+    )
+    return proc.returncode
 
 
 if __name__ == '__main__':

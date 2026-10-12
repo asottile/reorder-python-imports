@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import ast
 import os.path
+import subprocess
 import sys
 import tokenize
 
@@ -32,16 +33,24 @@ def main() -> int:
     double_1 = f'"{tokenize.Double}'
     single_1 = f"'{tokenize.Single}"
 
-    print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
-    print(f'COMMENT = {raw(tokenize.Comment)}')
-    print(f'NAME = {raw(tokenize.Name)}')
-    print(f'PREFIX = {raw(string_prefix)}')
-    print(f'DOUBLE_3 = {raw(double_3)}')
-    print(f'SINGLE_3 = {raw(single_3)}')
-    print(f'DOUBLE_1 = {raw(double_1)}')
-    print(f'SINGLE_1 = {raw(single_1)}')
-    print('# END GENERATED')
-    return 0
+    lines = []
+    lines.append(f'COMMENT = {raw(tokenize.Comment)}')
+    lines.append(f'NAME = {raw(tokenize.Name)}')
+    lines.append(f'PREFIX = {raw(string_prefix)}')
+    lines.append(f'DOUBLE_3 = {raw(double_3)}')
+    lines.append(f'SINGLE_3 = {raw(single_3)}')
+    lines.append(f'DOUBLE_1 = {raw(double_1)}')
+    lines.append(f'SINGLE_1 = {raw(single_1)}')
+
+    proc = subprocess.run(
+        (
+            sys.executable,
+            os.path.join(os.path.dirname(sys.argv[0]), '_replace'),
+            os.path.basename(sys.argv[0]),
+        ),
+        input='\n'.join(lines).encode(),
+    )
+    return proc.returncode
 
 
 if __name__ == '__main__':
