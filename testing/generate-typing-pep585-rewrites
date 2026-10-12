@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import os.path
+import subprocess
 import sys
-import typing.re
+import typing.re  # python<=3.12
 
 
 def main() -> int:
@@ -23,15 +24,21 @@ def main() -> int:
         if value.__origin__.__name__ == name
     ]
 
-    print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
-    print('REPLACES[(3, 9)].update((')
+    lines = ['REPLACES[(3, 9)].update((']
     for rename in sorted(renames, key=lambda s: s.split('=')):
-        print(f'    {rename!r},')
-    print('))')
-    print("REPLACES[(3, 10)].add('typing=collections.abc:Callable')")
-    print('# END GENERATED')
+        lines.append(f'    {rename!r},')
+    lines.append('))')
+    lines.append("REPLACES[(3, 10)].add('typing=collections.abc:Callable')")
 
-    return 0
+    proc = subprocess.run(
+        (
+            sys.executable,
+            os.path.join(os.path.dirname(sys.argv[0]), '_replace'),
+            os.path.basename(sys.argv[0]),
+        ),
+        input='\n'.join(lines).encode(),
+    )
+    return proc.returncode
 
 
 if __name__ == '__main__':

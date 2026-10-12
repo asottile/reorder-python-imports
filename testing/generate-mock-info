@@ -37,20 +37,26 @@ def main() -> int:
             to_add[(3, minor)] = new - prev
             prev = new
 
-    print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
-    print(f'# up until cpython 3.{minor - 1}.0')
+    lines = [f'# up until cpython 3.{minor - 1}.0']
     for k, v in sorted(to_add.items()):
-        print(f'REPLACES[{k}].update((')
+        lines.append(f'REPLACES[{k}].update((')
         for s in sorted(
                 f"    '{orig_mod}=unittest.mock:{attr}',"
                 for orig_mod in ('mock', 'mock.mock')
                 for attr in v
         ):
-            print(s)
-        print('))')
-    print('# END GENERATED')
+            lines.append(s)
+        lines.append('))')
 
-    return 0
+    proc = subprocess.run(
+        (
+            sys.executable,
+            os.path.join(os.path.dirname(sys.argv[0]), '_replace'),
+            os.path.basename(sys.argv[0]),
+        ),
+        input='\n'.join(lines).encode(),
+    )
+    return proc.returncode
 
 
 if __name__ == '__main__':
