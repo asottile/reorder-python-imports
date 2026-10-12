@@ -1,14 +1,81 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import collections
+import json
 import os
+import re
+import subprocess
 import sys
+from collections.abc import Generator
 from importlib.metadata import version
 
-import flake8_typing_imports
 import mypy_extensions
 import typing_extensions
+
+_TAG_RE = re.compile(r'^v[0-9.]+\.0$')
+
+
+def _get_tag_list(repo: str) -> Generator[str]:
+    subprocess.check_call(('git', '-C', repo, 'fetch', '-q', '--tags'))
+    out = subprocess.check_output(('git', '-C', repo, 'tag', '--list'))
+    for line in out.decode().splitlines():
+        if _TAG_RE.match(line):
+            yield line
+
+
+_PROG = '''\
+import json
+import sys
+import types
+
+_typing = types.ModuleType('typing')
+exec(compile(sys.stdin.read(), '<typing>', 'exec'), _typing.__dict__)
+
+lst = []
+
+# populate lazy attributes (Match, Pattern, etc.)
+if sys.version_info >= (3, 13):
+    for k in _typing.__all__:
+        getattr(_typing, k)
+else:
+    lst.extend(_typing.io.__all__)
+    lst.extend(_typing.re.__all__)
+
+lst.extend([
+    k for k, v in vars(_typing).items()
+    if k not in {'io', 're'}
+    if k in _typing.__all__ or (
+        # avoid private names
+        not k.startswith('_') and
+        # there's a few types and metaclasses that aren't exported
+        not k.endswith(('Meta', '_contra', '_co')) and
+        not k.upper() == k and
+        # but export all things that have __module__ == 'typing'
+        getattr(v, '__module__', None) == _typing.__name__
+    )
+])
+print(json.dumps(lst))
+'''
+
+
+def _get_defined_names(v: tuple[int, ...], s: bytes) -> set[str]:
+    """The __all__ of typing is very unreliable: bpo-36983"""
+    vstr = '{}.{}'.format(*v)
+    # my computer no longer has python <3.7
+    if v < (3, 7):
+        preamble: tuple[str, ...]
+        preamble = ('docker', 'run', '--rm', '-i', f'python:{vstr}-slim')
+    else:
+        preamble = ()
+    proc = subprocess.run(
+        (*preamble, f'python{vstr}', '-c', _PROG),
+        input=s,
+        stdout=subprocess.PIPE,
+        check=True,
+    )
+    return set(json.loads(proc.stdout))
 
 
 # --- typing_extensions notes ---
@@ -64,7 +131,10 @@ CUSTOM_TYPING_EXT_SYMBOLS = {
 
 
 def main() -> int:
-    flake8_typing_imports_version = version('flake8-typing-imports')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('cpython')
+    args = parser.parse_args()
+
     mypy_extensions_version = version('mypy_extensions')
     typing_extensions_version = version('typing_extensions')
 
@@ -75,32 +145,19 @@ def main() -> int:
         sym for v in CUSTOM_TYPING_EXT_SYMBOLS.values() for sym in v
     }
 
-    # some attrs are removed and then added back
-    min_contiguous_versions: dict[str, flake8_typing_imports.Version] = {}
-    for v, attrs in flake8_typing_imports.SYMBOLS:
-        for removed in set(min_contiguous_versions) - attrs:
-            del min_contiguous_versions[removed]
-
-        for attr in attrs:
-            min_contiguous_versions.setdefault(attr, v)
-
-    symbols = collections.defaultdict(set)
-    for a, v in min_contiguous_versions.items():
-        symbols[v].add(a)
-
-    # --pyXX-plus assumes the min --pyXX so group symbols by their
-    # rounded up major version
-    symbols_rounded_up: dict[tuple[int, int], set[str]]
-    symbols_rounded_up = collections.defaultdict(set)
-    for v, attrs in sorted(symbols.items()):
-        symbols_rounded_up[v.major, v.minor + int(v.patch != 0)] |= attrs
-
-    # combine 3.5 and 3.6 because this lib is 3.7+
-    symbols_rounded_up[(3, 6)] |= symbols_rounded_up.pop((3, 5))
+    symbols = {}
+    for tag in _get_tag_list(args.cpython):
+        major, minor, *_ = tuple(int(p) for p in tag[1:].split('.'))
+        ver = (major, minor)
+        if ver < (3, 6):
+            continue
+        cmd = ('git', '-C', args.cpython, 'show', f'{tag}:Lib/typing.py')
+        names = _get_defined_names(ver, subprocess.check_output(cmd))
+        symbols[ver] = names
 
     deltas = collections.defaultdict(set)
     prev: set[str] = set()
-    for v, attrs in sorted(symbols_rounded_up.items()):
+    for v, attrs in sorted(symbols.items()):
         deltas[v] = attrs - prev
         prev = attrs
 
@@ -124,15 +181,14 @@ def main() -> int:
 
     print(f'# GENERATED VIA {os.path.basename(sys.argv[0])}')
     print('# Using:')
-    print(f'#     flake8-typing-imports=={flake8_typing_imports_version}')
     print(f'#     mypy-extensions=={mypy_extensions_version}')
     print(f'#     typing-extensions=={typing_extensions_version}')
 
-    for k, v in sorted(replaces.items()):
+    for k, replaced in sorted(replaces.items()):
         if not v:
             continue
         print(f'REPLACES[{k}].update((')
-        for replace in sorted(v):
+        for replace in sorted(replaced):
             print(f'    {replace!r},')
         print('))')
 
