@@ -438,7 +438,6 @@ REMOVALS[(3, 14)].add('from __future__ import annotations')
 
 # GENERATED VIA generate-typing-rewrite-info
 # Using:
-#     flake8-typing-imports==1.19.0
 #     mypy-extensions==1.1.0
 #     typing-extensions==4.16.0
 REPLACES[(3, 6)].update((
