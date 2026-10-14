@@ -12,6 +12,7 @@ import sys
 from collections.abc import Generator
 from collections.abc import Sequence
 from typing import NamedTuple
+from typing import TypedDict
 
 from classify_imports import Import
 from classify_imports import import_from_replace
@@ -23,10 +24,16 @@ from classify_imports import sort
 
 
 if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
-    def _preserve_lazy(o: ast.ImportFrom) -> dict[str, int]:
+    class _LazyKwargs(TypedDict):
+        is_lazy: bool | None
+
+    def _preserve_lazy(o: ast.ImportFrom) -> _LazyKwargs:
         return {'is_lazy': o.is_lazy}
 else:  # pragma: <3.15 cover
-    def _preserve_lazy(o: ast.ImportFrom) -> dict[str, int]:
+    class _LazyKwargs(TypedDict):
+        pass
+
+    def _preserve_lazy(o: ast.ImportFrom) -> _LazyKwargs:
         return {}
 
 
@@ -301,7 +308,7 @@ def remove_duplicated_imports(
         to_remove: set[tuple[object, ...]],
 ) -> list[tuple[str, Import | ImportFrom]]:
     seen = set(to_remove)
-    seen_module_names: set[str] = set()
+    seen_module_names: set[tuple[str, int]] = set()
     without_exact_duplicates = []
 
     for s, import_obj in imports:
@@ -312,16 +319,18 @@ def remove_duplicated_imports(
                     not import_obj.key_with_lazy.asname
             ):
                 seen_module_names.update(
-                    _module_to_base_modules(import_obj.module),
+                    (module, import_obj.key_with_lazy.lazy)
+                    for module in _module_to_base_modules(import_obj.module)
                 )
             without_exact_duplicates.append((s, import_obj))
 
     ret = []
     for s, import_obj in without_exact_duplicates:
+        key = import_obj.key_with_lazy
         if (
                 isinstance(import_obj, Import) and
-                not import_obj.key_with_lazy.asname and
-                import_obj.key_with_lazy.module in seen_module_names
+                not key.asname and
+                (key.module, key.lazy) in seen_module_names
         ):
             continue
         ret.append((s, import_obj))

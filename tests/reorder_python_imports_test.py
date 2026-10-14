@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import os
+import subprocess
 import sys
 from unittest import mock
 
@@ -1057,6 +1058,43 @@ def test_py315_lazy_imports():  # pragma: >=3.15 cover
         'lazy import asyncio\n'
         'lazy from unittest import mock\n'
     )
+
+
+@pytest.mark.skipif(sys.version_info < (3, 15), reason='lazy syntax')
+@pytest.mark.parametrize(
+    ('s', 'expected'), (
+        ('import a\nlazy import a.b\n', 'import a\nlazy import a.b\n'),
+        ('lazy import a.b\nimport a\n', 'import a\nlazy import a.b\n'),
+        ('lazy import a\nimport a.b\n', 'import a.b\nlazy import a\n'),
+        ('import a\nlazy import a.b.c\n', 'import a\nlazy import a.b.c\n'),
+        ('import a\nimport a.b\n', 'import a.b\n'),
+        ('lazy import a\nlazy import a.b\n', 'lazy import a.b\n'),
+    ),
+)
+def test_parent_deduplication_lazy_mode(s, expected):  # pragma: >=3.15 cover
+    ret = fix_file_contents(
+        s, to_remove=set(), to_replace=Replacements.make([]),
+    )
+    assert ret == expected
+
+
+@pytest.mark.skipif(sys.version_info < (3, 15), reason='lazy syntax')
+def test_eager_parent_loaded(tmpdir):  # pragma: >=3.15 cover
+    package = tmpdir.mkdir('reorder_fixture_pkg')
+    package.join('__init__.py').write('initialized = True\n')
+    package.join('child.py').write('value = 1\n')
+    s = 'import reorder_fixture_pkg\nlazy import reorder_fixture_pkg.child\n'
+    ret = fix_file_contents(
+        s, to_remove=set(), to_replace=Replacements.make([]),
+    )
+    for source in (s, ret):
+        result = subprocess.check_output(
+            (
+                sys.executable, '-c', source +
+                'import sys\nprint("reorder_fixture_pkg" in sys.modules)\n',
+            ), cwd=str(tmpdir),
+        )
+        assert result == b'True\n'
 
 
 @pytest.mark.skipif(sys.version_info < (3, 15), reason='lazy syntax')
