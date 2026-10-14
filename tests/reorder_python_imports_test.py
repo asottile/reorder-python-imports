@@ -1094,7 +1094,7 @@ def test_eager_parent_loaded(tmpdir):  # pragma: >=3.15 cover
                 'import sys\nprint("reorder_fixture_pkg" in sys.modules)\n',
             ), cwd=str(tmpdir),
         )
-        assert result == b'True\n'
+        assert result.strip() == b'True'
 
 
 @pytest.mark.skipif(sys.version_info < (3, 15), reason='lazy syntax')
